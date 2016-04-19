@@ -1,4 +1,5 @@
 #pragma once
+#include "ofxJSON.h"
 #include "kinect2552.h"
 #include "networking.h"
 

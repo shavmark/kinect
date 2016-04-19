@@ -223,11 +223,11 @@ namespace Software2552 {
 		HandState* rightHand() { return &rightHandState; };
 		PointF *lean() { return &leanAmount; }
 
-	private:
 		Joint joints[JointType::JointType_Count];
 		HandState leftHandState;
 		HandState rightHandState;
 		PointF leanAmount;
+	private:
 		int talking; // person is talking, this is a count down bool, each check reduces the count so things can disappear over time
 	};
 
@@ -357,7 +357,7 @@ namespace Software2552 {
 	class KinectBodies : public KinectFaces {
 	public:
 		KinectBodies() : KinectFaces() { useFaces(); useAudio(); }
-		void update();
+		void update(ofxJSONElement &data);
 		void draw();
 		void setup(Kinect2552 *kinectInput);
 

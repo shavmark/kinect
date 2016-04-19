@@ -13,7 +13,10 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update(){
-	bodies.update();
+	ofxJSONElement data;
+	bodies.update(data);
+	comms.send(data, "kinect");
+
 	if (bodies.usingFaces()) {
 		faces.update();
 	}
@@ -22,7 +25,7 @@ void ofApp::update(){
 //--------------------------------------------------------------
 void ofApp::draw(){
 	faces.draw();
-	bodies.draw();
+	//bodies.draw();
 }
 
 //--------------------------------------------------------------

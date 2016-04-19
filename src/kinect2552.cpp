@@ -1,5 +1,5 @@
-#include "kinect2552.h"
 #include "ofxJSON.h"
+#include "kinect2552.h"
 
 //file:///C:/Users/mark/Downloads/KinectHIG.2.0.pdf
 
@@ -374,7 +374,7 @@ namespace Software2552 {
 		}
 	}
 
-	void KinectBodies::update() {
+	void KinectBodies::update(ofxJSONElement &data) {
 		IBodyFrame* pBodyFrame = nullptr;
 		HRESULT hResult = getKinect()->getBodyReader()->AcquireLatestFrame(&pBodyFrame);
 		if (!hresultFails(hResult, "AcquireLatestFrame")) {
@@ -410,21 +410,34 @@ namespace Software2552 {
 
 						// get joints
 						hResult = pBody[count]->GetJoints(JointType::JointType_Count, bodies[count]->getJoints());
+						
+						for (int i = 0; i < JointType::JointType_Count; ++i) {
+							data["joints"][i]["t"] = bodies[count]->joints[i].JointType;
+							data["joints"][i]["m"]["x"] = bodies[count]->joints[i].Position.X;// m for meters
+							data["joints"][i]["m"]["y"] = bodies[count]->joints[i].Position.Y;
+							data["joints"][i]["m"]["z"] = bodies[count]->joints[i].Position.Z;
+							//Joint joint = bodies[count]->joints[i];
+						}
+
 						if (!hresultFails(hResult, "GetJoints")) {
 							// Left Hand State
 							hResult = pBody[count]->get_HandLeftState(bodies[count]->leftHand());
 							if (hresultFails(hResult, "get_HandLeftState")) {
 								return;
 							}
+							data["l"] = bodies[count]->leftHandState;
 							hResult = pBody[count]->get_HandRightState(bodies[count]->rightHand());
 							if (hresultFails(hResult, "get_HandRightState")) {
 								return;
 							}
+							data["r"] = bodies[count]->rightHandState;
 							// Lean
 							hResult = pBody[count]->get_Lean(bodies[count]->lean());
 							if (hresultFails(hResult, "get_Lean")) {
 								return;
 							}
+							data["lean"]["x"] = bodies[count]->leanAmount.X;
+							data["lean"]["y"] = bodies[count]->leanAmount.Y;
 							bodies[count]->setValid();
 						}
 						bodies[count]->setValid(true);
