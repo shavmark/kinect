@@ -410,13 +410,29 @@ namespace Software2552 {
 
 						// get joints
 						hResult = pBody[count]->GetJoints(JointType::JointType_Count, bodies[count]->getJoints());
-						
+
 						for (int i = 0; i < JointType::JointType_Count; ++i) {
-							data["joints"][i]["t"] = bodies[count]->joints[i].JointType;
-							data["joints"][i]["m"]["x"] = bodies[count]->joints[i].Position.X;// m for meters
-							data["joints"][i]["m"]["y"] = bodies[count]->joints[i].Position.Y;
-							data["joints"][i]["m"]["z"] = bodies[count]->joints[i].Position.Z;
-							//Joint joint = bodies[count]->joints[i];
+							CameraSpacePoint position = bodies[count]->joints[i].Position;
+							DepthSpacePoint depthSpacePoint;
+							ColorSpacePoint colorSpacePoint;
+							HRESULT hResult = getKinect()->depth(1, &position, 1, &depthSpacePoint);
+							if (hresultFails(hResult, "depth")) {
+								break;
+							}
+							hResult = getKinect()->color(1, &position, 1, &colorSpacePoint);
+							if (hresultFails(hResult, "color")) {
+								break;
+							}
+							//bugbug maybe track the last one sent and then only send whats changed
+							// then the listener just keeps on data set current
+							data["joints"][i]["type"] = bodies[count]->joints[i].JointType;
+							//data["joints"][i]["depth"]["x"] = depthSpacePoint.X;
+							//data["joints"][i]["depth"]["y"] = depthSpacePoint.Y;
+							data["joints"][i]["color"]["x"] = colorSpacePoint.X;
+							data["joints"][i]["color"]["y"] = colorSpacePoint.Y;
+							//data["joints"][i]["cam"]["x"] = position.X;
+							//data["joints"][i]["cam"]["y"] = position.Y;
+							//data["joints"][i]["cam"]["z"] = position.Z;
 						}
 
 						if (!hresultFails(hResult, "GetJoints")) {
@@ -438,7 +454,7 @@ namespace Software2552 {
 							}
 							data["lean"]["x"] = bodies[count]->leanAmount.X;
 							data["lean"]["y"] = bodies[count]->leanAmount.Y;
-							bodies[count]->setValid();
+							
 						}
 						bodies[count]->setValid(true);
 					}
