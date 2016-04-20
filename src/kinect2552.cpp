@@ -1,5 +1,5 @@
-#include "ofxJSON.h"
-#include "kinect2552.h"
+
+#include "ofApp.h"
 
 //file:///C:/Users/mark/Downloads/KinectHIG.2.0.pdf
 
@@ -374,7 +374,7 @@ namespace Software2552 {
 		}
 	}
 
-	void KinectBodies::update(ofxJSONElement &data) {
+	void KinectBodies::update(WriteComms &comms) {
 		IBodyFrame* pBodyFrame = nullptr;
 		HRESULT hResult = getKinect()->getBodyReader()->AcquireLatestFrame(&pBodyFrame);
 		if (!hresultFails(hResult, "AcquireLatestFrame")) {
@@ -389,6 +389,8 @@ namespace Software2552 {
 					BOOLEAN bTracked = false;
 					hResult = pBody[count]->get_IsTracked(&bTracked);
 					if (SUCCEEDED(hResult) && bTracked) {
+						ofxJSONElement data;
+						data["id"] = count;
 						// Set TrackingID to Detect Face
 						// LEFT OFF HERE
 						UINT64 trackingId = _UI64_MAX;
@@ -410,8 +412,31 @@ namespace Software2552 {
 
 						// get joints
 						hResult = pBody[count]->GetJoints(JointType::JointType_Count, bodies[count]->getJoints());
-
+						if (!hresultFails(hResult, "GetJoints")) {
+							// Left Hand State
+							hResult = pBody[count]->get_HandLeftState(bodies[count]->leftHand());
+							if (hresultFails(hResult, "get_HandLeftState")) {
+								return;
+							}
+							data["left"] = bodies[count]->leftHandState;
+							hResult = pBody[count]->get_HandRightState(bodies[count]->rightHand());
+							if (hresultFails(hResult, "get_HandRightState")) {
+								return;
+							}
+							data["right"] = bodies[count]->rightHandState;
+							// Lean
+							hResult = pBody[count]->get_Lean(bodies[count]->lean());
+							if (hresultFails(hResult, "get_Lean")) {
+								return;
+							}
+							data["lean"]["x"] = bodies[count]->leanAmount.X;
+							data["lean"]["y"] = bodies[count]->leanAmount.Y;
+						}
+						comms.send(data, "kinect/body");
 						for (int i = 0; i < JointType::JointType_Count; ++i) {
+							ofxJSONElement data;
+							data["joints"][i]["id"] = count;
+
 							CameraSpacePoint position = bodies[count]->joints[i].Position;
 							DepthSpacePoint depthSpacePoint;
 							ColorSpacePoint colorSpacePoint;
@@ -426,36 +451,17 @@ namespace Software2552 {
 							//bugbug maybe track the last one sent and then only send whats changed
 							// then the listener just keeps on data set current
 							data["joints"][i]["type"] = bodies[count]->joints[i].JointType;
-							//data["joints"][i]["depth"]["x"] = depthSpacePoint.X;
-							//data["joints"][i]["depth"]["y"] = depthSpacePoint.Y;
+							data["joints"][i]["tracking"] = bodies[count]->joints[i].TrackingState;
+							data["joints"][i]["depth"]["x"] = depthSpacePoint.X;
+							data["joints"][i]["depth"]["y"] = depthSpacePoint.Y;
 							data["joints"][i]["color"]["x"] = colorSpacePoint.X;
 							data["joints"][i]["color"]["y"] = colorSpacePoint.Y;
-							//data["joints"][i]["cam"]["x"] = position.X;
-							//data["joints"][i]["cam"]["y"] = position.Y;
-							//data["joints"][i]["cam"]["z"] = position.Z;
+							data["joints"][i]["cam"]["x"] = position.X;
+							data["joints"][i]["cam"]["y"] = position.Y;
+							data["joints"][i]["cam"]["z"] = position.Z;
+							comms.send(data, "kinect/joints");
 						}
 
-						if (!hresultFails(hResult, "GetJoints")) {
-							// Left Hand State
-							hResult = pBody[count]->get_HandLeftState(bodies[count]->leftHand());
-							if (hresultFails(hResult, "get_HandLeftState")) {
-								return;
-							}
-							data["l"] = bodies[count]->leftHandState;
-							hResult = pBody[count]->get_HandRightState(bodies[count]->rightHand());
-							if (hresultFails(hResult, "get_HandRightState")) {
-								return;
-							}
-							data["r"] = bodies[count]->rightHandState;
-							// Lean
-							hResult = pBody[count]->get_Lean(bodies[count]->lean());
-							if (hresultFails(hResult, "get_Lean")) {
-								return;
-							}
-							data["lean"]["x"] = bodies[count]->leanAmount.X;
-							data["lean"]["y"] = bodies[count]->leanAmount.Y;
-							
-						}
 						bodies[count]->setValid(true);
 					}
 				}
@@ -471,7 +477,28 @@ namespace Software2552 {
 			//aquireFaceFrame();
 		//}
 	}
-
+	STDMETHODIMP_(ULONG) KinectAudioStream::Release() {
+		UINT ref = InterlockedDecrement(&m_cRef);
+		if (ref == 0) {
+			delete this;
+		}
+		return ref;
+	}
+	STDMETHODIMP KinectAudioStream::QueryInterface(REFIID riid, void **ppv) {
+		if (riid == IID_IUnknown) {
+			AddRef();
+			*ppv = (IUnknown*)this;
+			return S_OK;
+		}
+		else if (riid == IID_IStream) {
+			AddRef();
+			*ppv = (IStream*)this;
+			return S_OK;
+		}
+		else {
+			return E_NOINTERFACE;
+		}
+	}
 
 	bool Kinect2552::open()
 	{
@@ -591,12 +618,10 @@ void KinectFace::draw()
 	if (objectValid()) {
 		//ofDrawCircle(400, 100, 30);
 
-		if (faceProperty[FaceProperty_LeftEyeClosed] != DetectionResult_Yes)
-		{
+		if (faceProperty[FaceProperty_LeftEyeClosed] != DetectionResult_Yes)		{
 			ofDrawCircle(leftEye().X-15, leftEye().Y, 10);
 		}
-		if (faceProperty[FaceProperty_RightEyeClosed] != DetectionResult_Yes)
-		{
+		if (faceProperty[FaceProperty_RightEyeClosed] != DetectionResult_Yes)		{
 			ofDrawCircle(rightEye().X+15, rightEye().Y, 10);
 		}
 		ofDrawCircle(nose().X, nose().Y, 5);
@@ -612,8 +637,7 @@ void KinectFace::draw()
 				height = 60.0;
 				offset = height/2;
 			}
-			else
-			{
+			else			{
 				height = 5.0;
 				offset = 10;
 			}
@@ -633,7 +657,6 @@ void KinectFaces::draw()
 		ofSetColor(getKinect()->getColor(count));
 		faces[count]->draw();
 	}
-
 
 }
 void KinectFaces::ExtractFaceRotationInDegrees(const Vector4* pQuaternion, int* pPitch, int* pYaw, int* pRoll)
@@ -686,22 +709,16 @@ void  BodyItems::aquireBodyFrame()
 	}
 
 }
-// add faces to the bodies
-void KinectFaces::update() {
-	
-	//aquireBodyFrame();
-	aquireFaceFrame();
-}
 
 void KinectFaces::drawProjected(int x, int y, int width, int height) {
 	return;
 }
 // return true if face found
-bool KinectFaces::aquireFaceFrame()
+void KinectFaces::update(WriteComms &comms)
 {
 	if (faces.size() < Kinect2552::personCount) {
 		logErrorString("not enough faces:"+ ofToString(faces.size()));
-		return false;
+		return;
 	}
 	for (int count = 0; count < Kinect2552::personCount; count++) {
 		IFaceFrame* pFaceFrame = nullptr;
@@ -716,13 +733,40 @@ bool KinectFaces::aquireFaceFrame()
 					logVerbose("aquireFaceFrame");
 					
 					hResult = pFaceResult->GetFacePointsInColorSpace(FacePointType::FacePointType_Count, faces[count]->facePoint);
-					hResult = pFaceResult->get_FaceRotationQuaternion(&faces[count]->faceRotation);
+					if (hresultFails(hResult, "GetFacePointsInColorSpace")) {
+						return;
+					}
+					pFaceResult->get_FaceRotationQuaternion(&faces[count]->faceRotation);
 					hResult = pFaceResult->GetFaceProperties(FaceProperty::FaceProperty_Count, faces[count]->faceProperty);
-					hResult = pFaceResult->get_FaceBoundingBoxInColorSpace(&faces[count]->boundingBox);
+					if (hresultFails(hResult, "GetFaceProperties")) {
+						return;
+					}
+					pFaceResult->get_FaceBoundingBoxInColorSpace(&faces[count]->boundingBox);
+					for (int i = 0; i < faces.size(); i++) {
+						ofxJSONElement data;
+						data["face"][i]["id"] = count;
+						data["face"][i]["eye"]["left"]["closed"] = faces[i]->faceProperty[FaceProperty_LeftEyeClosed] != DetectionResult_Yes;
+						data["face"][i]["eye"]["left"]["x"] = faces[i]->facePoint[FacePointType_EyeLeft].X;
+						data["face"][i]["eye"]["left"]["y"] = faces[i]->facePoint[FacePointType_EyeLeft].Y;
+						data["face"][i]["eye"]["closed"] = faces[i]->faceProperty[FaceProperty_RightEyeClosed] != DetectionResult_Yes;
+						data["face"][i]["eye"]["right"]["x"] = faces[i]->facePoint[FacePointType_EyeRight].X;
+						data["face"][i]["eye"]["right"]["y"] = faces[i]->facePoint[FacePointType_EyeRight].Y;
+						data["face"][i]["nose"]["x"] = faces[i]->facePoint[FacePointType_Nose].X;
+						data["face"][i]["nose"]["y"] = faces[i]->facePoint[FacePointType_Nose].Y;
+						data["face"][i]["mouth"]["left"]["x"] = faces[i]->facePoint[FacePointType_MouthCornerLeft].X;
+						data["face"][i]["mouth"]["left"]["y"] = faces[i]->facePoint[FacePointType_MouthCornerLeft].Y;
+						data["face"][i]["mouth"]["right"]["x"] = faces[i]->facePoint[FacePointType_MouthCornerRight].X;
+						data["face"][i]["mouth"]["right"]["y"] = faces[i]->facePoint[FacePointType_MouthCornerRight].Y;
+						data["face"][i]["mouth"]["open"] = faces[i]->faceProperty[FaceProperty_MouthOpen] == DetectionResult_Yes || faces[i]->faceProperty[FaceProperty_MouthOpen] == DetectionResult_Maybe;
+						data["face"][i]["happy"] = faces[i]->faceProperty[FaceProperty_Happy] == DetectionResult_Yes ||
+							faces[i]->faceProperty[FaceProperty_Happy] == DetectionResult_Maybe || faces
+							[i]->faceProperty[FaceProperty_Happy] == DetectionResult_Unknown; // try hard to be happy
+						comms.send(data, "kinect/face");
+					}
 					SafeRelease(pFaceResult);
 					SafeRelease(pFaceFrame);
 					faces[count]->setValid();
-					return true;
+					return;
 
 				}
 				SafeRelease(pFaceResult);
@@ -730,7 +774,6 @@ bool KinectFaces::aquireFaceFrame()
 		}
 		SafeRelease(pFaceFrame);
 	}
-	return false;
 }
 void KinectFaces::buildFaces() {
 	for (int i = 0; i < Kinect2552::personCount; ++i) {

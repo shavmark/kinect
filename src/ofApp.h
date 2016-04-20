@@ -1,7 +1,22 @@
 #pragma once
+#pragma once
+#define Foundation_UnWindows_INCLUDED
+// For M_PI and log definitions
+#define _USE_MATH_DEFINES
+#include <math.h>
+#include <iostream>
+#include <memory>
+// Microsoft Speech Platform SDK 11
+#include <sapi.h>
+#include <sphelper.h> // SpFindBestToken()
+#include <strsafe.h>
+#include <intsafe.h>
+#include <Synchapi.h>
 #include "ofxJSON.h"
-#include "kinect2552.h"
 #include "networking.h"
+#include "kinect2552.h"
+
+#include "ofMain.h"
 
 class ofApp : public ofBaseApp{
 

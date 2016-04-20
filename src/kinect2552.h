@@ -1,18 +1,4 @@
-#pragma once
-#define Foundation_UnWindows_INCLUDED
-// For M_PI and log definitions
-#define _USE_MATH_DEFINES
-#include <math.h>
-#include <iostream>
-#include <memory>
-// Microsoft Speech Platform SDK 11
-#include <sapi.h>
-#include <sphelper.h> // SpFindBestToken()
-#include <strsafe.h>
-#include <intsafe.h>
-#include <Synchapi.h>
-// keep all MS files above ofmain.h
-#include "ofMain.h"
+
 
 //bugbug fix path in debug and release mode
 #include <C:\Program Files\Microsoft SDKs\Kinect\v2.0_1409\inc\Kinect.Face.h>
@@ -78,54 +64,17 @@ namespace Software2552 {
 		}
 	}
 
-	// <summary>
-	/// Asynchronous IStream implementation that captures audio data from Kinect audio sensor in a background thread
-	/// and lets clients read captured audio from any thread. from msft sdk
-	/// </summary>
 	class KinectAudioStream : public IStream
 	{
 	public:
-		/////////////////////////////////////////////
-		// KinectAudioStream methods
-
-		/// <summary>
-		/// KinectAudioStream constructor.
-		/// </summary>
 		KinectAudioStream(IStream *p32BitAudioStream);
-
-		/// <summary>
-		/// SetSpeechState method
-		/// </summary>
 		void SetSpeechState(bool state);
 
-		/////////////////////////////////////////////
-		// IUnknown methods
 		STDMETHODIMP_(ULONG) AddRef() { return InterlockedIncrement(&m_cRef); }
-		STDMETHODIMP_(ULONG) Release()		{
-			UINT ref = InterlockedDecrement(&m_cRef);
-			if (ref == 0)			{
-				delete this;
-			}
-			return ref;
-		}
-		STDMETHODIMP QueryInterface(REFIID riid, void **ppv)		{
-			if (riid == IID_IUnknown)		{
-				AddRef();
-				*ppv = (IUnknown*)this;
-				return S_OK;
-			}
-			else if (riid == IID_IStream)			{
-				AddRef();
-				*ppv = (IStream*)this;
-				return S_OK;
-			}
-			else			{
-				return E_NOINTERFACE;
-			}
-		}
+		STDMETHODIMP_(ULONG) Release();
+		STDMETHODIMP QueryInterface(REFIID riid, void **ppv);
 
-		/////////////////////////////////////////////
-		// IStream methods
+	private:
 		STDMETHODIMP Read(void *, ULONG, ULONG *);
 		STDMETHODIMP Write(const void *, ULONG, ULONG *);
 		STDMETHODIMP Seek(LARGE_INTEGER, DWORD, ULARGE_INTEGER *);
@@ -137,10 +86,6 @@ namespace Software2552 {
 		STDMETHODIMP UnlockRegion(ULARGE_INTEGER, ULARGE_INTEGER, DWORD);
 		STDMETHODIMP Stat(STATSTG *, DWORD);
 		STDMETHODIMP Clone(IStream **);
-
-	private:
-
-		// Number of references to this object
 		UINT                    m_cRef;
 		IStream*                m_p32BitAudio;
 		bool                    m_SpeechActive;
@@ -232,7 +177,7 @@ namespace Software2552 {
 	};
 
 	
-
+	//bugbug remove
 	class KinectFace : public BodyItems {
 	public:
 		KinectFace(Kinect2552 *pKinect = nullptr) {
@@ -280,14 +225,12 @@ namespace Software2552 {
 		~KinectFaces();
 
 		void setup(Kinect2552 *);
-		void update();
+		void update(WriteComms &comms);
 		void draw();
 		void drawProjected(int x, int y, int width, int height);
 		
-		int baseline();
 	protected:
 		vector<shared_ptr<KinectFace>> faces;
-		bool aquireFaceFrame();
 		void ExtractFaceRotationInDegrees(const Vector4* pQuaternion, int* pPitch, int* pYaw, int* pRoll);
 		void setTrackingID(int index, UINT64 trackingId);
 
@@ -302,13 +245,26 @@ namespace Software2552 {
 		KinectAudio(Kinect2552 *pKinect = nullptr);
 		~KinectAudio();
 
-		const UINT64 NoTrackingID = _UI64_MAX - 1;
-		const UINT64 NoTrackingIndex = -1;
-
 		void setup(Kinect2552 *pKinect);
 		void update();
-		void draw() {};
 
+		void getAudioCorrelation();
+		UINT64 getTrackingID() { return audioTrackingId; }
+
+	protected:
+		bool confident() { return  getConfidence() > 0.5f; }
+		float getAngle() { return angle; }
+		float getConfidence() { return confidence; }
+		void getAudioBeam();
+		void getAudioBody();
+		int  getTrackingBodyIndex() { return trackingIndex; }
+		virtual void setTrackingID(int index, UINT64 trackingId);
+		HRESULT createSpeechRecognizer();
+		HRESULT startSpeechRecognition();
+		void getAudioCommands();
+	private:
+		const UINT64 NoTrackingID = _UI64_MAX - 1;
+		const UINT64 NoTrackingIndex = -1;
 		IAudioBeamFrameReader* getAudioBeamReader() {
 			checkPointer(pAudioBeamReader, "getAudioBeamReader");
 			return pAudioBeamReader;
@@ -317,20 +273,6 @@ namespace Software2552 {
 			checkPointer(pAudioSource, "getAudioSource");
 			return pAudioSource;
 		}
-		bool confident() { return  getConfidence() > 0.5f; }
-		float getAngle() { return angle; }
-		float getConfidence() { return confidence; }
-		void getAudioBeam();
-		void getAudioBody();
-		void getAudioCorrelation();
-		int  getTrackingBodyIndex() {return trackingIndex;}
-		UINT64 getTrackingID() { return audioTrackingId; }
-
-	protected:
-		virtual void setTrackingID(int index, UINT64 trackingId);
-		HRESULT createSpeechRecognizer();
-		HRESULT startSpeechRecognition();
-		void getAudioCommands();
 
 		HRESULT findKinect();
 		HRESULT setupSpeachStream();
@@ -357,7 +299,7 @@ namespace Software2552 {
 	class KinectBodies : public KinectFaces {
 	public:
 		KinectBodies() : KinectFaces() { useFaces(); useAudio(); }
-		void update(ofxJSONElement &data);
+		void update(WriteComms &comms);
 		void draw();
 		void setup(Kinect2552 *kinectInput);
 

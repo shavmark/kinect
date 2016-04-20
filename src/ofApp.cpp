@@ -13,18 +13,16 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update(){
-	ofxJSONElement data;
-	bodies.update(data);
-	comms.send(data, "kinect");
+	bodies.update(comms);
 
 	if (bodies.usingFaces()) {
-		faces.update();
+		faces.update(comms);
 	}
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-	faces.draw();
+	//faces.draw();
 	//bodies.draw();
 }
 
