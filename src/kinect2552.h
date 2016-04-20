@@ -76,16 +76,16 @@ namespace Software2552 {
 
 	private:
 		STDMETHODIMP Read(void *, ULONG, ULONG *);
-		STDMETHODIMP Write(const void *, ULONG, ULONG *);
-		STDMETHODIMP Seek(LARGE_INTEGER, DWORD, ULARGE_INTEGER *);
-		STDMETHODIMP SetSize(ULARGE_INTEGER);
-		STDMETHODIMP CopyTo(IStream *, ULARGE_INTEGER, ULARGE_INTEGER *, ULARGE_INTEGER *);
-		STDMETHODIMP Commit(DWORD);
-		STDMETHODIMP Revert();
-		STDMETHODIMP LockRegion(ULARGE_INTEGER, ULARGE_INTEGER, DWORD);
-		STDMETHODIMP UnlockRegion(ULARGE_INTEGER, ULARGE_INTEGER, DWORD);
-		STDMETHODIMP Stat(STATSTG *, DWORD);
-		STDMETHODIMP Clone(IStream **);
+		STDMETHODIMP Write(const void *, ULONG, ULONG *) { return E_NOTIMPL; }
+		STDMETHODIMP Seek(LARGE_INTEGER, DWORD, ULARGE_INTEGER *) { return S_OK; }
+		STDMETHODIMP SetSize(ULARGE_INTEGER) { return E_NOTIMPL; }
+		STDMETHODIMP CopyTo(IStream *, ULARGE_INTEGER, ULARGE_INTEGER *, ULARGE_INTEGER *) { return E_NOTIMPL; }
+		STDMETHODIMP Commit(DWORD) { return E_NOTIMPL; }
+		STDMETHODIMP Revert() { return E_NOTIMPL; }
+		STDMETHODIMP LockRegion(ULARGE_INTEGER, ULARGE_INTEGER, DWORD) { return E_NOTIMPL; }
+		STDMETHODIMP UnlockRegion(ULARGE_INTEGER, ULARGE_INTEGER, DWORD) { return E_NOTIMPL; }
+		STDMETHODIMP Stat(STATSTG *, DWORD) { return E_NOTIMPL; }
+		STDMETHODIMP Clone(IStream **) { return E_NOTIMPL; }
 		UINT                    m_cRef;
 		IStream*                m_p32BitAudio;
 		bool                    m_SpeechActive;
@@ -115,7 +115,6 @@ namespace Software2552 {
 		int getFrameWidth() { return width; }
 		int getFrameHeight() { return height; }
 		static const int personCount = BODY_COUNT;
-		void coordinateMapper();
 		HRESULT depth(UINT cameraPointCount, CameraSpacePoint*csp, UINT depthPointCount, DepthSpacePoint *dsp) { return pCoordinateMapper->MapCameraPointsToDepthSpace(1, csp, 1, dsp); }
 		HRESULT color(UINT cameraPointCount, const CameraSpacePoint*csp, UINT depthPointCount, ColorSpacePoint *color) { return pCoordinateMapper->MapCameraPointsToColorSpace(1, csp, 1, color); }
 	private:
@@ -227,7 +226,6 @@ namespace Software2552 {
 		void setup(Kinect2552 *);
 		void update(WriteComms &comms);
 		void draw();
-		void drawProjected(int x, int y, int width, int height);
 		
 	protected:
 		vector<shared_ptr<KinectFace>> faces;

@@ -79,26 +79,41 @@ namespace Software2552 {
 	/// <summary>
 	/// KinectAudioStream constructor. from msft sdk
 	/// </summary>
-	KinectAudioStream::KinectAudioStream(IStream *p32BitAudio) :
-		m_cRef(1),
-		m_p32BitAudio(p32BitAudio),
-		m_SpeechActive(false)
-
-	{
+	KinectAudioStream::KinectAudioStream(IStream *p32BitAudio) :	m_cRef(1),	m_p32BitAudio(p32BitAudio),	m_SpeechActive(false)	{
 	}
 
 	/// <summary>
 	/// SetSpeechState method
 	/// </summary>
-	void KinectAudioStream::SetSpeechState(bool state)
-	{
+	void KinectAudioStream::SetSpeechState(bool state)	{
 		m_SpeechActive = state;
+	}
+	STDMETHODIMP_(ULONG) KinectAudioStream::Release() {
+		UINT ref = InterlockedDecrement(&m_cRef);
+		if (ref == 0) {
+			delete this;
+		}
+		return ref;
+	}
+	STDMETHODIMP KinectAudioStream::QueryInterface(REFIID riid, void **ppv) {
+		if (riid == IID_IUnknown) {
+			AddRef();
+			*ppv = (IUnknown*)this;
+			return S_OK;
+		}
+		else if (riid == IID_IStream) {
+			AddRef();
+			*ppv = (IStream*)this;
+			return S_OK;
+		}
+		else {
+			return E_NOINTERFACE;
+		}
 	}
 
 	/////////////////////////////////////////////
 	// IStream methods
-	STDMETHODIMP KinectAudioStream::Read(void *pBuffer, ULONG cbBuffer, ULONG *pcbRead)
-	{
+	STDMETHODIMP KinectAudioStream::Read(void *pBuffer, ULONG cbBuffer, ULONG *pcbRead)	{
 		if (pcbRead == NULL || cbBuffer == NULL)		{
 			return E_INVALIDARG;
 		}
@@ -162,46 +177,6 @@ namespace Software2552 {
 		return hr;
 	}
 
-	STDMETHODIMP KinectAudioStream::Write(const void *, ULONG, ULONG *)	{
-		return E_NOTIMPL;
-	}
-
-	STDMETHODIMP KinectAudioStream::Seek(LARGE_INTEGER /* dlibMove */, DWORD /* dwOrigin */, ULARGE_INTEGER * /* plibNewPosition */)	{
-		// Speech seeks and expects a seek implementation - but the NUIAudio stream doesnt support seeking
-		return S_OK;
-	}
-
-	STDMETHODIMP KinectAudioStream::SetSize(ULARGE_INTEGER)	{
-		return E_NOTIMPL;
-	}
-
-	STDMETHODIMP KinectAudioStream::CopyTo(IStream *, ULARGE_INTEGER, ULARGE_INTEGER *, ULARGE_INTEGER *)	{
-		return E_NOTIMPL;
-	}
-
-	STDMETHODIMP KinectAudioStream::Commit(DWORD)	{
-		return E_NOTIMPL;
-	}
-
-	STDMETHODIMP KinectAudioStream::Revert()	{
-		return E_NOTIMPL;
-	}
-
-	STDMETHODIMP KinectAudioStream::LockRegion(ULARGE_INTEGER, ULARGE_INTEGER, DWORD)	{
-		return E_NOTIMPL;
-	}
-
-	STDMETHODIMP KinectAudioStream::UnlockRegion(ULARGE_INTEGER, ULARGE_INTEGER, DWORD)	{
-		return E_NOTIMPL;
-	}
-
-	STDMETHODIMP KinectAudioStream::Stat(STATSTG *, DWORD)	{
-		return E_NOTIMPL;
-	}
-
-	STDMETHODIMP KinectAudioStream::Clone(IStream **)	{
-		return E_NOTIMPL;
-	}
 
 	KinectBody::KinectBody(Kinect2552 *pKinect) {
 		logVerbose("KinectBody");
@@ -477,32 +452,9 @@ namespace Software2552 {
 			//aquireFaceFrame();
 		//}
 	}
-	STDMETHODIMP_(ULONG) KinectAudioStream::Release() {
-		UINT ref = InterlockedDecrement(&m_cRef);
-		if (ref == 0) {
-			delete this;
-		}
-		return ref;
-	}
-	STDMETHODIMP KinectAudioStream::QueryInterface(REFIID riid, void **ppv) {
-		if (riid == IID_IUnknown) {
-			AddRef();
-			*ppv = (IUnknown*)this;
-			return S_OK;
-		}
-		else if (riid == IID_IStream) {
-			AddRef();
-			*ppv = (IStream*)this;
-			return S_OK;
-		}
-		else {
-			return E_NOINTERFACE;
-		}
-	}
 
 	bool Kinect2552::open()
 	{
-		
 		HRESULT hResult = GetDefaultKinectSensor(&pSensor);
 		if (hresultFails(hResult, "GetDefaultKinectSensor")) {
 			return false;
@@ -561,9 +513,6 @@ namespace Software2552 {
 		return true;
 	}
 
-	void Kinect2552::coordinateMapper()
-	{
-}
 KinectFaces::KinectFaces() {
 
 	logVerbose("KinectFaces");
@@ -681,7 +630,6 @@ void KinectFaces::setTrackingID(int index, UINT64 trackingId) {
 
 void  BodyItems::aquireBodyFrame()
 {
-
 	IBodyFrame* pBodyFrame = nullptr;
 	HRESULT hResult = getKinect()->getBodyReader()->AcquireLatestFrame(&pBodyFrame); // getKinect()->getBodyReader() was pBodyReader
 	if (!hresultFails(hResult, "AcquireLatestFrame")) {
@@ -710,9 +658,6 @@ void  BodyItems::aquireBodyFrame()
 
 }
 
-void KinectFaces::drawProjected(int x, int y, int width, int height) {
-	return;
-}
 // return true if face found
 void KinectFaces::update(WriteComms &comms)
 {
