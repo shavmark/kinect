@@ -365,7 +365,7 @@ namespace Software2552 {
 					hResult = pBody[count]->get_IsTracked(&bTracked);
 					if (SUCCEEDED(hResult) && bTracked) {
 						ofxJSONElement data;
-						data["id"] = count;
+						
 						// Set TrackingID to Detect Face
 						// LEFT OFF HERE
 						UINT64 trackingId = _UI64_MAX;
@@ -411,7 +411,7 @@ namespace Software2552 {
 						comms.send(data, "kinect/body");
 						for (int i = 0; i < JointType::JointType_Count; ++i) {
 							ofxJSONElement data;
-							data["joints"][i]["id"] = count;
+							data["trackingId"] = trackingId;
 
 							CameraSpacePoint position = bodies[count]->joints[i].Position;
 							DepthSpacePoint depthSpacePoint;
@@ -426,15 +426,16 @@ namespace Software2552 {
 							}
 							//bugbug maybe track the last one sent and then only send whats changed
 							// then the listener just keeps on data set current
-							data["joints"][i]["type"] = bodies[count]->joints[i].JointType;
-							data["joints"][i]["tracking"] = bodies[count]->joints[i].TrackingState;
-							data["joints"][i]["depth"]["x"] = depthSpacePoint.X;
-							data["joints"][i]["depth"]["y"] = depthSpacePoint.Y;
-							data["joints"][i]["color"]["x"] = colorSpacePoint.X;
-							data["joints"][i]["color"]["y"] = colorSpacePoint.Y;
-							data["joints"][i]["cam"]["x"] = position.X;
-							data["joints"][i]["cam"]["y"] = position.Y;
-							data["joints"][i]["cam"]["z"] = position.Z;
+							data["jointType"] = bodies[count]->joints[i].JointType;
+							data["trackingState"] = bodies[count]->joints[i].TrackingState;
+							data["depth"]["x"] = depthSpacePoint.X;
+							data["depth"]["y"] = depthSpacePoint.Y;
+							data["color"]["x"] = colorSpacePoint.X;
+							data["color"]["y"] = colorSpacePoint.Y;
+							data["cam"]["x"] = position.X;
+							data["cam"]["y"] = position.Y;
+							data["cam"]["z"] = position.Z;
+							string s = data.getRawString();
 							comms.send(data, "kinect/joints");
 						}
 
@@ -552,9 +553,6 @@ KinectFaces::~KinectFaces() {
 void KinectBodies::setTrackingID(int index, UINT64 trackingId) {
 	if (usingFaces() && faces.size() >= index) {
 		faces[index]->getFaceSource()->put_TrackingId(trackingId); 
-	}
-	if (bodies.size() >= index) {
-		bodies[index]->trackingId = trackingId;
 	}
 }
 // get the face readers
@@ -686,7 +684,6 @@ void KinectFaces::update(WriteComms &comms)
 					pFaceResult->get_TrackingId(&tid);
 					ofxJSONElement data;
 
-					data["id"] = count;
 					data["trackingId"] = tid;
 
 					hResult = pFaceResult->GetFacePointsInInfraredSpace(FacePointType::FacePointType_Count, faces[count]->facePointIR);
@@ -821,7 +818,7 @@ void KinectAudio::getAudioCommands(WriteComms &comms) {
 					HRESULT hResult = pRecoResult->GetPhrase(&pPhrase);
 					if (!hresultFails(hResult, "GetPhrase")) {
 						if ((pPhrase->pProperties != nullptr) && (pPhrase->pProperties->pFirstChild != nullptr)) {
-							ofxJSONElement data;
+							
 							// Compared with the Phrase Tag in the grammar file
 							const SPPHRASEPROPERTY* pSemantic = pPhrase->pProperties->pFirstChild;
 							switch (pSemantic->Confidence) {
@@ -837,10 +834,11 @@ void KinectAudio::getAudioCommands(WriteComms &comms) {
 							}
 
 							if (pSemantic->SREngineConfidence > confidenceThreshold) {
+								ofxJSONElement data;
 								data["trackingId"] = audioTrackingId;
-								data["phrase"]["confidence"] = pSemantic->Confidence;//if not enough hit turn down the gain bugbug
-								data["phrase"]["value"] = pSemantic->pszValue;
-								comms.send(data, "kinect/audio");
+								data["confidence"] = pSemantic->Confidence;//if not enough hit turn down the gain bugbug
+								data["value"] = pSemantic->pszValue;
+								comms.send(data, "kinect/audioCommand");
 								logTrace("SREngineConfidence > confidenceThreshold: " + Trace::wstrtostr(pSemantic->pszValue));
 							}
 						}
@@ -855,11 +853,6 @@ void KinectAudio::getAudioCommands(WriteComms &comms) {
 		logTrace("other");
 	}
 
-}
-void KinectAudio::update(WriteComms &comms) {
-	getAudioBody(comms);
-	getAudioBeam(comms);
-	getAudioCommands(comms);
 }
 //http://www.buildinsider.net/small/kinectv2cpp/07
 KinectAudio::KinectAudio(Kinect2552 *pKinect) {
@@ -1109,6 +1102,12 @@ void  KinectAudio::setTrackingID(int index, UINT64 trackingId) {
 		logTrace("set tracking id");
 	}
 }
+// only call if audio matches a body via tracking Id
+void KinectAudio::update(WriteComms &comms) {
+	//getAudioBody(comms);
+	getAudioBeam(comms);
+	getAudioCommands(comms);
+}
 
 // poll kenict to get audo and the body it came from
 void KinectAudio::getAudioBody(WriteComms &comms) {
@@ -1177,7 +1176,7 @@ void KinectAudio::getAudioBeam(WriteComms &comms) {
 					ofxJSONElement data;
 					data[beam]["angle"] = angle;
 					data[beam]["confidence"] = confidence;
-					data["trackingId"] = audioTrackingId;
+					data[beam]["trackingId"] = audioTrackingId; // matches a body
 					comms.send(data, "kinect/audio");
 					SafeRelease(pAudioBeam);
 				}

@@ -171,7 +171,7 @@ namespace Software2552 {
 		HandState leftHandState;
 		HandState rightHandState;
 		PointF leanAmount;
-		UINT64 trackingId = 0;
+		
 	private:
 		int talking; // person is talking, this is a count down bool, each check reduces the count so things can disappear over time
 	};
@@ -239,11 +239,12 @@ namespace Software2552 {
 
 	class KinectAudio : public BodyItems {
 	public:
+		friend class KinectBodies;
+
 		KinectAudio(Kinect2552 *pKinect = nullptr);
 		~KinectAudio();
 
 		void setup(Kinect2552 *pKinect);
-		void update(WriteComms &comms);
 
 		void getAudioCorrelation(WriteComms &comms);
 		UINT64 getTrackingID() { return audioTrackingId; }
@@ -260,6 +261,7 @@ namespace Software2552 {
 		HRESULT createSpeechRecognizer();
 		HRESULT startSpeechRecognition();
 	private:
+		void update(WriteComms &comms);
 		const UINT64 NoTrackingID = _UI64_MAX - 1;
 		const UINT64 NoTrackingIndex = -1;
 		IAudioBeamFrameReader* getAudioBeamReader() {
