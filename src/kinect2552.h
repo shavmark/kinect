@@ -11,14 +11,6 @@
 namespace Software2552 {
 	class KinectBaseClass {
 	public:
-		KinectBaseClass() { valid = false; }
-
-		bool objectValid() { return valid; } // data is in a good state
-		void setValid(bool b = true) { valid = b; };
-
-	private:
-		bool valid; // true when data is valid and ready to draw
-
 	};
 
 	// can be, but does not need to be, a base class as its all static and can just be called, could not even be a class I suppose
@@ -64,8 +56,7 @@ namespace Software2552 {
 		}
 	}
 
-	class KinectAudioStream : public IStream
-	{
+	class KinectAudioStream : public IStream	{
 	public:
 		KinectAudioStream(IStream *p32BitAudioStream);
 		void SetSpeechState(bool state);
@@ -107,36 +98,34 @@ namespace Software2552 {
 		}
 		IBodyIndexFrameReader* getBodyIndexReader() {
 			return pBodyIndexReader;
-
 		}
-		ofColor getColor(int index) {
-			return colors[index];
-		}
-		int getFrameWidth() { return width; }
-		int getFrameHeight() { return height; }
+		int widthColor=0; // size of the kinect frames
+		int heightColor = 0;
+		int widthDepth = 0; // size of the kinect frames
+		int heightDepth = 0;
 		static const int personCount = BODY_COUNT;
 		HRESULT depth(UINT cameraPointCount, CameraSpacePoint*csp, UINT depthPointCount, DepthSpacePoint *dsp) { return pCoordinateMapper->MapCameraPointsToDepthSpace(1, csp, 1, dsp); }
 		HRESULT color(UINT cameraPointCount, const CameraSpacePoint*csp, UINT depthPointCount, ColorSpacePoint *color) { return pCoordinateMapper->MapCameraPointsToColorSpace(1, csp, 1, color); }
 	private:
-		IKinectSensor*     pSensor;
-		IColorFrameReader* pColorReader;
-		IBodyFrameReader*  pBodyReader;
-		IDepthFrameReader* pDepthReader;
-		IFrameDescription* pDescription;
-		IDepthFrameSource* pDepthSource;
-		IColorFrameSource* pColorSource;
-		IBodyFrameSource*  pBodySource;
 
-		IBodyIndexFrameSource* pBodyIndexSource;
-		IBodyIndexFrameReader* pBodyIndexReader;
+		IKinectSensor*     pSensor = nullptr;
 
-		ICoordinateMapper* pCoordinateMapper;
+		IColorFrameReader* pColorReader = nullptr;
+		IColorFrameSource* pColorSource = nullptr;
 
-		int width; // size of the kinect frames
-		int height;
+		IDepthFrameReader* pDepthReader = nullptr; // depth and IR not deeply support, bugbug should they be? not sure.
+		IDepthFrameSource* pDepthSource = nullptr;
 
-		// Color Table
-		vector<ofColor> colors;
+		IFrameDescription* pDescriptionColor = nullptr;
+		IFrameDescription* pDescriptionDepth = nullptr;
+
+		IBodyFrameReader*  pBodyReader = nullptr;
+		IBodyFrameSource*  pBodySource = nullptr;
+
+		IBodyIndexFrameSource* pBodyIndexSource = nullptr;
+		IBodyIndexFrameReader* pBodyIndexReader = nullptr;
+
+		ICoordinateMapper* pCoordinateMapper = nullptr;
 	};
 
 
@@ -149,19 +138,15 @@ namespace Software2552 {
 
 	protected:
 		virtual void setTrackingID(int index, UINT64 trackingId) {};
-		void aquireBodyFrame();
 
 	private:
-		
 		Kinect2552 *pKinect;
 	};
 
 	class KinectBody : public BodyItems {
 	public:
 		KinectBody(Kinect2552 *pKinect = nullptr);
-		void draw(bool drawface=true);
-		bool isTalking();
-		void setTalking(int count = 2); // let it linger just a bit
+
 		Joint* getJoints() { return joints; }
 		HandState* leftHand() { return &leftHandState; };
 		HandState* rightHand() { return &rightHandState; };
@@ -172,8 +157,6 @@ namespace Software2552 {
 		HandState rightHandState;
 		PointF leanAmount;
 		
-	private:
-		int talking; // person is talking, this is a count down bool, each check reduces the count so things can disappear over time
 	};
 
 	
@@ -182,7 +165,6 @@ namespace Software2552 {
 	public:
 		KinectFace(Kinect2552 *pKinect = nullptr) {
 			setupKinect(pKinect);
-			logVerbose("KinectFace");
 		}
 		~KinectFace();
 		void cleanup();
@@ -195,15 +177,6 @@ namespace Software2552 {
 			checkPointer(pFaceSource, "getFaceSource");
 			return pFaceSource;
 		}
-		void draw();
-
-		PointF leftEye() { return facePoint[FacePointType_EyeLeft]; };
-		PointF rightEye() { return facePoint[FacePointType_EyeRight]; };
-		PointF nose() { return facePoint[FacePointType_Nose]; };
-		PointF mouthCornerLeft() { return facePoint[FacePointType_MouthCornerLeft]; };
-		PointF mouthCornerRight() { return facePoint[FacePointType_MouthCornerRight]; };
-
-		string strings;
 
 		friend class KinectFaces;
 		
@@ -225,7 +198,6 @@ namespace Software2552 {
 
 		void setup(Kinect2552 *);
 		void update(WriteComms &comms);
-		void draw();
 	protected:
 		vector<shared_ptr<KinectFace>> faces;
 		void ExtractFaceRotationInDegrees(const Vector4* pQuaternion, int* pPitch, int* pYaw, int* pRoll);
@@ -254,7 +226,6 @@ namespace Software2552 {
 		float getAngle() { return angle; }
 		float getConfidence() { return confidence; }
 		void getAudioBeam(WriteComms &comms);
-		void getAudioBody(WriteComms &comms);
 		void getAudioCommands(WriteComms &comms);
 		int  getTrackingBodyIndex() { return trackingIndex; }
 		virtual void setTrackingID(int index, UINT64 trackingId);
@@ -276,30 +247,28 @@ namespace Software2552 {
 		HRESULT findKinect();
 		HRESULT setupSpeachStream();
 
-		IAudioSource*		   pAudioSource;
-		IAudioBeamFrameReader* pAudioBeamReader;
-		IAudioBeamList* pAudioBeamList;
-		IAudioBeam* pAudioBeam;
-		IStream* pAudioStream;
-		ISpStream* pSpeechStream;
-		ISpRecognizer* pSpeechRecognizer;
-		ISpRecoContext* pSpeechContext;
-		ISpRecoGrammar* pSpeechGrammar;
-		HANDLE hSpeechEvent;
-		KinectAudioStream* audioStream;
-		UINT64 audioTrackingId;
-		int trackingIndex;
-		float angle;
-		float confidence;
-		UINT32 correlationCount;
-
+		IAudioSource*		   pAudioSource = nullptr;
+		IAudioBeamFrameReader* pAudioBeamReader = nullptr;
+		IAudioBeamList* pAudioBeamList = nullptr;
+		IAudioBeam* pAudioBeam = nullptr;
+		IStream* pAudioStream = nullptr;
+		ISpStream* pSpeechStream = nullptr;
+		ISpRecognizer* pSpeechRecognizer = nullptr;
+		ISpRecoContext* pSpeechContext = nullptr;
+		ISpRecoGrammar* pSpeechGrammar = nullptr;
+		HANDLE hSpeechEvent = INVALID_HANDLE_VALUE;
+		KinectAudioStream* audioStream = nullptr;
+		UINT64 audioTrackingId=0;
+		int trackingIndex=0;
+		float angle = 0.0f;
+		float confidence = 0.0f;
+		UINT32 correlationCount = 0;
 	};
 
 	class KinectBodies : public KinectFaces {
 	public:
 		KinectBodies() : KinectFaces() { useFaces(); useAudio(); }
 		void update(WriteComms &comms);
-		void draw();
 		void setup(Kinect2552 *kinectInput);
 
 		void useFaces(bool usefaces = true)  { includeFaces = usefaces; }

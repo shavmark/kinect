@@ -183,7 +183,6 @@ namespace Software2552 {
 		setupKinect(pKinect);
 		leftHandState = HandState::HandState_Unknown;
 		rightHandState = HandState::HandState_Unknown;
-		setTalking(false);
 	}
 
 	void BodyItems::setupKinect(Kinect2552 *pKinectIn) {
@@ -191,28 +190,6 @@ namespace Software2552 {
 	};
 
 	Kinect2552::Kinect2552():KinectBaseClass(){
-		pSensor = nullptr;
-		width = 0;
-		height = 0;
-		pColorReader = nullptr;
-		pBodyReader = nullptr;
-		pDepthReader = nullptr;
-		pDescription = nullptr;
-		pDepthSource = nullptr;
-		pColorSource = nullptr;
-		pBodySource = nullptr;
-		pCoordinateMapper = nullptr;
-		pBodyIndexSource = nullptr;
-		pBodyIndexReader = nullptr;
-
-		// Color Table, gives each body its own color
-		colors.push_back(ofColor(255, 0, 0));
-		colors.push_back(ofColor(0, 0, 255));
-		colors.push_back(ofColor(255, 255, 0));
-		colors.push_back(ofColor(0, 255, 255));
-		colors.push_back(ofColor(255, 0, 255));
-		colors.push_back(ofColor(255, 255, 255));
-
 	}
 
 	Kinect2552::~Kinect2552() {
@@ -223,23 +200,14 @@ namespace Software2552 {
 		SafeRelease(pColorReader);
 		SafeRelease(pBodyReader);
 		SafeRelease(pDepthReader);
-		SafeRelease(pDescription);
+		SafeRelease(pDescriptionColor);
+		SafeRelease(pDescriptionDepth);
 		SafeRelease(pDepthSource);
 		SafeRelease(pColorSource);
 		SafeRelease(pBodySource);
 		SafeRelease(pCoordinateMapper);
 		SafeRelease(pBodyIndexSource);
 		SafeRelease(pBodyIndexReader);
-	}
-	void KinectBody::setTalking(int count) { 
-		talking = count; 
-	}
-
-	bool KinectBody::isTalking() {
-		if (talking > 0) {
-			--talking;
-		}
-		return talking > 0;
 	}
 	void KinectBodies::setup(Kinect2552 *kinectInput) {
 
@@ -261,94 +229,6 @@ namespace Software2552 {
 			}
 		}
 	}
-	void KinectBody::draw(bool drawface) {
-
-		if (objectValid()) {
-			//ofDrawCircle(600, 100, 30);
-			
-			ColorSpacePoint colorSpacePoint = { 0 };
-			//ofDrawCircle(400, 100, 30);
-			CameraSpacePoint Position = joints[JointType::JointType_HandLeft].Position;
-			DepthSpacePoint out;
-			ColorSpacePoint out2;
-			HRESULT hResult = getKinect()->depth(1, &Position, 1, &out);
-			hResult = getKinect()->color(1, &Position, 1, &out2);
-			// fails here
-			if (SUCCEEDED(hResult)) {
-				//ofDrawCircle(700, 100, 30);
-				int x = static_cast<int>(colorSpacePoint.X);
-				int y = static_cast<int>(colorSpacePoint.Y);
-				if ((x >= 0) && (x < getKinect()->getFrameWidth()) && (y >= 0) && (y < getKinect()->getFrameHeight())) {
-					if (leftHandState == HandState::HandState_Open) {
-						ofDrawCircle(x, y, 30);
-					}
-					else if (leftHandState == HandState::HandState_Closed) {
-						ofDrawCircle(x, y, 5);
-					}
-					else if (leftHandState == HandState::HandState_Lasso) {
-						ofDrawCircle(x, y, 15);
-					}
-				}
-			}
-			colorSpacePoint = { 0 };
-			//hResult = getKinect()->getCoordinateMapper()->MapCameraPointToColorSpace(joints[JointType::JointType_HandRight].Position, &colorSpacePoint);
-			if (SUCCEEDED(hResult)) {
-				int x = static_cast<int>(colorSpacePoint.X);
-				int y = static_cast<int>(colorSpacePoint.Y);
-				if ((x >= 0) && (x < getKinect()->getFrameWidth()) && (y >= 0) && (y < getKinect()->getFrameHeight())) {
-					if (rightHandState == HandState::HandState_Open) {
-						ofDrawCircle(x, y, 30);
-					}
-					else if (rightHandState == HandState::HandState_Closed) {
-						ofDrawCircle(x, y, 5);
-					}
-					else if (rightHandState == HandState::HandState_Lasso) {
-						ofDrawCircle(x, y, 15);
-					}
-				}
-			}
-			// Joint
-			for (int type = 0; type < JointType::JointType_Count; type++) {
-				colorSpacePoint = { 0 };
-				//getKinect()->getCoordinateMapper()->MapCameraPointToColorSpace(joints[type].Position, &colorSpacePoint);
-				int x = static_cast<int>(colorSpacePoint.X);
-				int y = static_cast<int>(colorSpacePoint.Y);
-
-				if (joints[type].JointType == JointType::JointType_Head) {
-					if (isTalking()) {
-						//bugbug todo go to this to get better 3d projection CameraSpacePoint
-						ofDrawLine(colorSpacePoint.X+2, colorSpacePoint.Y-5, colorSpacePoint.X + 40, colorSpacePoint.Y-5);
-						ofDrawLine(colorSpacePoint.X + 5, colorSpacePoint.Y, colorSpacePoint.X + 45, colorSpacePoint.Y);
-						ofDrawLine(colorSpacePoint.X+2, colorSpacePoint.Y +5, colorSpacePoint.X + 40, colorSpacePoint.Y + 5);
-					}
-				}
-				if (!drawface) {
-					if ((joints[type].JointType == JointType::JointType_Head) | 
-						(joints[type].JointType == JointType::JointType_Neck)) {
-						continue;// assume face is drawn elsewhere
-					}
-				}
-				if ((x >= 0) && (x < getKinect()->getFrameWidth()) && (y >= 0) && (y < getKinect()->getFrameHeight())) {
-					ofDrawCircle(x, y, 10);
-				}
-
-			}
-
-		}
-
-	}
-	void KinectBodies::draw() {
-
-		for (int count = 0; count < bodies.size(); count++) {
-			ofSetColor(getKinect()->getColor(count));
-			bodies[count]->draw(!usingFaces());
-		}
-
-		if (usingFaces()) {
-			KinectFaces::draw();
-		}
-	}
-
 	void KinectBodies::update(WriteComms &comms) {
 		IBodyFrame* pBodyFrame = nullptr;
 		HRESULT hResult = getKinect()->getBodyReader()->AcquireLatestFrame(&pBodyFrame);
@@ -358,8 +238,6 @@ namespace Software2552 {
 			hResult = pBodyFrame->GetAndRefreshBodyData(Kinect2552::personCount, pBody);
 			if (!hresultFails(hResult, "GetAndRefreshBodyData")) {
 				for (int count = 0; count < Kinect2552::personCount; count++) {
-					bodies[count]->setTalking(0);
-					bodies[count]->setValid(false);
 					// breaks here
 					BOOLEAN bTracked = false;
 					hResult = pBody[count]->get_IsTracked(&bTracked);
@@ -379,9 +257,7 @@ namespace Software2552 {
 							// see if any audio there
 							audio.getAudioCorrelation(comms);
 							if (audio.getTrackingID() == trackingId) {
-								audio.setValid();
 								audio.update(comms);
-								bodies[count]->setTalking();//bugbug can we remove this now that its in json?
 								data["talking"] = true;
 							}
 						}
@@ -408,6 +284,12 @@ namespace Software2552 {
 							data["lean"]["x"] = bodies[count]->leanAmount.X;
 							data["lean"]["y"] = bodies[count]->leanAmount.Y;
 						}
+
+						data["width"]["color"] = getKinect()->widthColor;
+						data["width"]["depth"] = getKinect()->widthDepth;
+						data["height"]["color"] = getKinect()->heightColor;
+						data["height"]["depth"] = getKinect()->heightDepth;
+
 						comms.send(data, "kinect/body");
 						for (int i = 0; i < JointType::JointType_Count; ++i) {
 							ofxJSONElement data;
@@ -438,8 +320,6 @@ namespace Software2552 {
 							string s = data.getRawString();
 							comms.send(data, "kinect/joints");
 						}
-
-						bodies[count]->setValid(true);
 					}
 				}
 			}
@@ -481,6 +361,11 @@ bool Kinect2552::open() {
 			return false;
 		}
 
+		hResult = pSensor->get_DepthFrameSource(&pDepthSource);
+		if (hresultFails(hResult, "get_DepthFrameSource")) {
+			return false;
+		}
+
 		hResult = pBodyIndexSource->OpenReader(&pBodyIndexReader);
 		if (hresultFails(hResult, "pBodyIndexSource OpenReader")) {
 			return false;
@@ -496,13 +381,25 @@ bool Kinect2552::open() {
 			return false;
 		}
 
-		hResult = pColorSource->get_FrameDescription(&pDescription);
-		if (hresultFails(hResult, "get_FrameDescription")) {
+		//bugbug what do we do with these readers?
+		hResult = pDepthSource->OpenReader(&pDepthReader);
+		if (hresultFails(hResult, "pDepthSource OpenReader")) {
 			return false;
 		}
 
-		pDescription->get_Width(&width);  
-		pDescription->get_Height(&height);  
+		hResult = pColorSource->get_FrameDescription(&pDescriptionColor);
+		if (hresultFails(hResult, "get_FrameDescription pDescriptionColor")) {
+			return false;
+		}
+		pDescriptionColor->get_Width(&widthColor);
+		pDescriptionColor->get_Height(&heightColor);
+
+		hResult = pDepthSource->get_FrameDescription(&pDescriptionDepth);
+		if (hresultFails(hResult, "get_FrameDescription pDescriptionColor")) {
+			return false;
+		}
+		pDescriptionDepth->get_Width(&widthDepth);
+		pDescriptionDepth->get_Height(&heightDepth);
 
 		hResult = pSensor->get_CoordinateMapper(&pCoordinateMapper);
 		if (hresultFails(hResult, "get_CoordinateMapper")) {
@@ -563,100 +460,12 @@ void KinectFaces::setup(Kinect2552 *kinectInput) {
 
 }
 
-void KinectFace::draw()
-{
-	if (objectValid()) {
-		//ofDrawCircle(400, 100, 30);
-
-		if (faceProperty[FaceProperty_LeftEyeClosed] != DetectionResult_Yes)		{
-			ofDrawCircle(leftEye().X-15, leftEye().Y, 10);
-		}
-		if (faceProperty[FaceProperty_RightEyeClosed] != DetectionResult_Yes)		{
-			ofDrawCircle(rightEye().X+15, rightEye().Y, 10);
-		}
-		ofDrawCircle(nose().X, nose().Y, 5);
-		if (faceProperty[FaceProperty_Happy] == DetectionResult_Yes || faceProperty[FaceProperty_Happy] == DetectionResult_Maybe || faceProperty[FaceProperty_Happy] == DetectionResult_Unknown) {
-			// smile as much as possible
-			ofDrawCurve(mouthCornerLeft().X- 70, mouthCornerLeft().Y-70, mouthCornerLeft().X, mouthCornerRight().Y+30, mouthCornerRight().X, mouthCornerRight().Y+30, mouthCornerRight().X+ 70, mouthCornerRight().Y - 70);
-		}
-		else {
-			float height;
-			float offset = 0;
-			if (faceProperty[FaceProperty_MouthOpen] == DetectionResult_Yes || faceProperty[FaceProperty_MouthOpen] == DetectionResult_Maybe)			{
-				height = 60.0;
-				offset = height/2;
-			}
-			else			{
-				height = 5.0;
-				offset = 10;
-			}
-			if (mouthCornerRight().X > 0) {
-				//points2String();
-			}
-			float width = abs(mouthCornerRight().X - mouthCornerLeft().X);
-			ofDrawEllipse(mouthCornerLeft().X-5, mouthCornerLeft().Y+ offset, width+5, height);
-		}
-	}
-
-}
-void KinectFaces::draw()
-{
-	//ofDrawCircle(400, 100, 30);
-	for (int count = 0; count < faces.size(); count++) {
-		ofSetColor(getKinect()->getColor(count));
-		faces[count]->draw();
-	}
-
-}
-void KinectFaces::ExtractFaceRotationInDegrees(const Vector4* pQuaternion, int* pPitch, int* pYaw, int* pRoll)
-{
-	double x = pQuaternion->x;
-	double y = pQuaternion->y;
-	double z = pQuaternion->z;
-	double w = pQuaternion->w;
-
-	// convert face rotation quaternion to Euler angles in degrees
-	*pPitch = static_cast<int>(std::atan2(2 * (y * z + w * x), w * w - x * x - y * y + z * z) / M_PI * 180.0f);
-	*pYaw = static_cast<int>(std::asin(2 * (w * y - x * z)) / M_PI * 180.0f);
-	*pRoll = static_cast<int>(std::atan2(2 * (x * y + w * z), w * w + x * x - y * y - z * z) / M_PI * 180.0f);
-}
 void KinectFaces::setTrackingID(int index, UINT64 trackingId) { 
 	if (faces.size() < index) {
 		logErrorString("not enough faces");
 		return;
 	}
 	faces[index]->pFaceSource->put_TrackingId(trackingId);
-};
-
-//bugbug do we need this?
-void  BodyItems::aquireBodyFrame()
-{
-	IBodyFrame* pBodyFrame = nullptr;
-	HRESULT hResult = getKinect()->getBodyReader()->AcquireLatestFrame(&pBodyFrame); // getKinect()->getBodyReader() was pBodyReader
-	if (!hresultFails(hResult, "AcquireLatestFrame")) {
-		IBody* pBody[Kinect2552::personCount] = { 0 };
-		hResult = pBodyFrame->GetAndRefreshBodyData(Kinect2552::personCount, pBody);
-		if (!hresultFails(hResult, "GetAndRefreshBodyData")) {
-			for (int count = 0; count < Kinect2552::personCount; count++) {
-				BOOLEAN bTracked = false;
-				hResult = pBody[count]->get_IsTracked(&bTracked);
-				if (SUCCEEDED(hResult) && bTracked) {
-
-					// Set TrackingID to Detect Face etc
-					UINT64 trackingId = _UI64_MAX;
-					hResult = pBody[count]->get_TrackingId(&trackingId);
-					if (!hresultFails(hResult, "get_TrackingId")) {
-						setTrackingID(count, trackingId);
-					}
-				}
-			}
-		}
-		for (int count = 0; count < Kinect2552::personCount; count++) {
-			SafeRelease(pBody[count]);
-		}
-		SafeRelease(pBodyFrame);
-	}
-
 }
 
 // return true if face found
@@ -685,23 +494,6 @@ void KinectFaces::update(WriteComms &comms)
 					ofxJSONElement data;
 
 					data["trackingId"] = tid;
-
-					hResult = pFaceResult->GetFacePointsInInfraredSpace(FacePointType::FacePointType_Count, faces[count]->facePointIR);
-					if (hresultFails(hResult, "GetFacePointsInInfraredSpace")) {
-						return;
-					}
-					//bugbug if this data matters make a common function with the color one
-					data["ir"]["eye"]["left"]["x"] = faces[count]->facePointIR[FacePointType_EyeLeft].X;
-					data["ir"]["eye"]["left"]["y"] = faces[count]->facePointIR[FacePointType_EyeLeft].Y;
-					data["ir"]["eye"]["right"]["x"] = faces[count]->facePointIR[FacePointType_EyeRight].X;
-					data["ir"]["eye"]["right"]["y"] = faces[count]->facePointIR[FacePointType_EyeRight].Y;
-					data["ir"]["nose"]["x"] = faces[count]->facePointIR[FacePointType_Nose].X;
-					data["ir"]["nose"]["y"] = faces[count]->facePointIR[FacePointType_Nose].Y;
-					data["ir"]["mouth"]["left"]["x"] = faces[count]->facePointIR[FacePointType_MouthCornerLeft].X;
-					data["ir"]["mouth"]["left"]["y"] = faces[count]->facePointIR[FacePointType_MouthCornerLeft].Y;
-					data["ir"]["mouth"]["right"]["x"] = faces[count]->facePointIR[FacePointType_MouthCornerRight].X;
-					data["ir"]["mouth"]["right"]["y"] = faces[count]->facePointIR[FacePointType_MouthCornerRight].Y;
-
 
 					hResult = pFaceResult->GetFacePointsInColorSpace(FacePointType::FacePointType_Count, faces[count]->facePoint);
 					if (hresultFails(hResult, "GetFacePointsInColorSpace")) {
@@ -745,21 +537,10 @@ void KinectFaces::update(WriteComms &comms)
 					data["boundingBox"]["right"] = faces[count]->boundingBox.Right;
 					data["boundingBox"]["bottom"] = faces[count]->boundingBox.Bottom;
 
-					hResult = pFaceResult->get_FaceBoundingBoxInInfraredSpace(&faces[count]->boundingBox);
-					data["ir"]["boundingBox"]["top"] = faces[count]->boundingBox.Top;
-					data["ir"]["boundingBox"]["left"] = faces[count]->boundingBox.Left;
-					data["ir"]["boundingBox"]["right"] = faces[count]->boundingBox.Right;
-					data["ir"]["boundingBox"]["bottom"] = faces[count]->boundingBox.Bottom;
-
-					string s;
-					if (faces[count]->faceRotation.x) {
-						s = data.getRawString();
-					}
 					comms.send(data, "kinect/face");
 
 					SafeRelease(pFaceResult);
 					SafeRelease(pFaceFrame);
-					faces[count]->setValid();
 					return;
 
 				}
@@ -786,7 +567,6 @@ void KinectFaces::buildFaces() {
 			}
 			faces.push_back(p);
 		}
-
 	}
 }
 
@@ -860,20 +640,6 @@ KinectAudio::KinectAudio(Kinect2552 *pKinect) {
 	logVerbose("KinectAudio");
 	audioTrackingId = NoTrackingID;
 	trackingIndex = NoTrackingIndex;
-	angle = 0.0f;
-	confidence = 0.0f;
-	correlationCount = 0;
-	pAudioBeamList=nullptr;
-	pAudioBeam = nullptr;
-	pAudioStream = nullptr;
-	pAudioSource = nullptr;
-	pAudioBeamReader = nullptr;
-	pSpeechStream = nullptr;
-	pSpeechRecognizer = nullptr;
-	pSpeechContext = nullptr;
-	pSpeechGrammar = nullptr;
-	hSpeechEvent = INVALID_HANDLE_VALUE;
-	audioStream = nullptr;
 }
 
 KinectAudio::~KinectAudio(){
@@ -1104,18 +870,10 @@ void  KinectAudio::setTrackingID(int index, UINT64 trackingId) {
 }
 // only call if audio matches a body via tracking Id
 void KinectAudio::update(WriteComms &comms) {
-	//getAudioBody(comms);
 	getAudioBeam(comms);
 	getAudioCommands(comms);
 }
 
-// poll kenict to get audo and the body it came from
-void KinectAudio::getAudioBody(WriteComms &comms) {
-	getAudioCorrelation(comms);
-	if (correlationCount != 0) {
-		aquireBodyFrame();//bugbug not sure what to do here
-	}
-}
 void KinectAudio::getAudioCorrelation(WriteComms &comms) {
 	correlationCount = 0;
 	trackingIndex = NoTrackingIndex;
