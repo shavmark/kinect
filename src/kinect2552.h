@@ -171,6 +171,7 @@ namespace Software2552 {
 		HandState leftHandState;
 		HandState rightHandState;
 		PointF leanAmount;
+		UINT64 trackingId = 0;
 	private:
 		int talking; // person is talking, this is a count down bool, each check reduces the count so things can disappear over time
 	};
@@ -202,14 +203,13 @@ namespace Software2552 {
 		PointF mouthCornerLeft() { return facePoint[FacePointType_MouthCornerLeft]; };
 		PointF mouthCornerRight() { return facePoint[FacePointType_MouthCornerRight]; };
 
-		void points2String() {
-		}
 		string strings;
 
 		friend class KinectFaces;
-
+		
 	protected:
 		PointF facePoint[FacePointType::FacePointType_Count];
+		PointF facePointIR[FacePointType::FacePointType_Count];
 		DetectionResult faceProperty[FaceProperty::FaceProperty_Count];
 		RectI boundingBox;
 		Vector4 faceRotation;
@@ -226,7 +226,6 @@ namespace Software2552 {
 		void setup(Kinect2552 *);
 		void update(WriteComms &comms);
 		void draw();
-		
 	protected:
 		vector<shared_ptr<KinectFace>> faces;
 		void ExtractFaceRotationInDegrees(const Vector4* pQuaternion, int* pPitch, int* pYaw, int* pRoll);
@@ -244,22 +243,22 @@ namespace Software2552 {
 		~KinectAudio();
 
 		void setup(Kinect2552 *pKinect);
-		void update();
+		void update(WriteComms &comms);
 
-		void getAudioCorrelation();
+		void getAudioCorrelation(WriteComms &comms);
 		UINT64 getTrackingID() { return audioTrackingId; }
 
 	protected:
 		bool confident() { return  getConfidence() > 0.5f; }
 		float getAngle() { return angle; }
 		float getConfidence() { return confidence; }
-		void getAudioBeam();
-		void getAudioBody();
+		void getAudioBeam(WriteComms &comms);
+		void getAudioBody(WriteComms &comms);
+		void getAudioCommands(WriteComms &comms);
 		int  getTrackingBodyIndex() { return trackingIndex; }
 		virtual void setTrackingID(int index, UINT64 trackingId);
 		HRESULT createSpeechRecognizer();
 		HRESULT startSpeechRecognition();
-		void getAudioCommands();
 	private:
 		const UINT64 NoTrackingID = _UI64_MAX - 1;
 		const UINT64 NoTrackingIndex = -1;
@@ -311,7 +310,6 @@ namespace Software2552 {
 		bool includeFaces;
 		bool includeAudio;
 		void setTrackingID(int index, UINT64 trackingId);
-		
 		vector<shared_ptr<KinectBody>> bodies;
 		KinectAudio audio;
 	};

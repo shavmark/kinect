@@ -14,10 +14,6 @@ void ofApp::setup(){
 //--------------------------------------------------------------
 void ofApp::update(){
 	bodies.update(comms);
-
-	if (bodies.usingFaces()) {
-		faces.update(comms);
-	}
 }
 
 //--------------------------------------------------------------

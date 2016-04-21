@@ -373,15 +373,16 @@ namespace Software2552 {
 						if (hresultFails(hResult, "get_TrackingId")) {
 							return;
 						}
-
+						data["trackingId"] = trackingId;
 						setTrackingID(count, trackingId); //bugbug if this fails should we just readJsonValue an error and return?
 						if (usingAudio()) {
 							// see if any audio there
-							audio.getAudioCorrelation();
+							audio.getAudioCorrelation(comms);
 							if (audio.getTrackingID() == trackingId) {
-								audio.setValid(); 
-								logTrace("set talking");
-								bodies[count]->setTalking();
+								audio.setValid();
+								audio.update(comms);
+								bodies[count]->setTalking();//bugbug can we remove this now that its in json?
+								data["talking"] = true;
 							}
 						}
 
@@ -448,13 +449,12 @@ namespace Software2552 {
 
 		SafeRelease(pBodyFrame);
 
-		//if (usingFaces()) {
-			//aquireFaceFrame();
-		//}
-	}
+		if (usingFaces()) {
+			KinectFaces::update(comms);//bugbug cleanup the classes a bit, audio should not be a base class
+		}
+}
 
-	bool Kinect2552::open()
-	{
+bool Kinect2552::open() {
 		HRESULT hResult = GetDefaultKinectSensor(&pSensor);
 		if (hresultFails(hResult, "GetDefaultKinectSensor")) {
 			return false;
@@ -552,7 +552,10 @@ KinectFaces::~KinectFaces() {
 void KinectBodies::setTrackingID(int index, UINT64 trackingId) {
 	if (usingFaces() && faces.size() >= index) {
 		faces[index]->getFaceSource()->put_TrackingId(trackingId); 
-	};
+	}
+	if (bodies.size() >= index) {
+		bodies[index]->trackingId = trackingId;
+	}
 }
 // get the face readers
 void KinectFaces::setup(Kinect2552 *kinectInput) {
@@ -581,8 +584,7 @@ void KinectFace::draw()
 		else {
 			float height;
 			float offset = 0;
-			if (faceProperty[FaceProperty_MouthOpen] == DetectionResult_Yes || faceProperty[FaceProperty_MouthOpen] == DetectionResult_Maybe)
-			{
+			if (faceProperty[FaceProperty_MouthOpen] == DetectionResult_Yes || faceProperty[FaceProperty_MouthOpen] == DetectionResult_Maybe)			{
 				height = 60.0;
 				offset = height/2;
 			}
@@ -591,7 +593,7 @@ void KinectFace::draw()
 				offset = 10;
 			}
 			if (mouthCornerRight().X > 0) {
-				points2String();
+				//points2String();
 			}
 			float width = abs(mouthCornerRight().X - mouthCornerLeft().X);
 			ofDrawEllipse(mouthCornerLeft().X-5, mouthCornerLeft().Y+ offset, width+5, height);
@@ -628,6 +630,7 @@ void KinectFaces::setTrackingID(int index, UINT64 trackingId) {
 	faces[index]->pFaceSource->put_TrackingId(trackingId);
 };
 
+//bugbug do we need this?
 void  BodyItems::aquireBodyFrame()
 {
 	IBodyFrame* pBodyFrame = nullptr;
@@ -675,39 +678,88 @@ void KinectFaces::update(WriteComms &comms)
 				IFaceFrameResult* pFaceResult = nullptr;
 				hResult = pFaceFrame->get_FaceFrameResult(&pFaceResult);
 				if (SUCCEEDED(hResult) && pFaceResult != nullptr) {
-					logVerbose("aquireFaceFrame");
-					
+					pFaceResult->get_FaceRotationQuaternion(&faces[count]->faceRotation);
+					if (!faces[count]->faceRotation.x && !faces[count]->faceRotation.y && !faces[count]->faceRotation.w && !faces[count]->faceRotation.z) {
+						return;// noise
+					}
+					UINT64 tid = 0;
+					pFaceResult->get_TrackingId(&tid);
+					ofxJSONElement data;
+
+					data["id"] = count;
+					data["trackingId"] = tid;
+
+					hResult = pFaceResult->GetFacePointsInInfraredSpace(FacePointType::FacePointType_Count, faces[count]->facePointIR);
+					if (hresultFails(hResult, "GetFacePointsInInfraredSpace")) {
+						return;
+					}
+					//bugbug if this data matters make a common function with the color one
+					data["ir"]["eye"]["left"]["x"] = faces[count]->facePointIR[FacePointType_EyeLeft].X;
+					data["ir"]["eye"]["left"]["y"] = faces[count]->facePointIR[FacePointType_EyeLeft].Y;
+					data["ir"]["eye"]["right"]["x"] = faces[count]->facePointIR[FacePointType_EyeRight].X;
+					data["ir"]["eye"]["right"]["y"] = faces[count]->facePointIR[FacePointType_EyeRight].Y;
+					data["ir"]["nose"]["x"] = faces[count]->facePointIR[FacePointType_Nose].X;
+					data["ir"]["nose"]["y"] = faces[count]->facePointIR[FacePointType_Nose].Y;
+					data["ir"]["mouth"]["left"]["x"] = faces[count]->facePointIR[FacePointType_MouthCornerLeft].X;
+					data["ir"]["mouth"]["left"]["y"] = faces[count]->facePointIR[FacePointType_MouthCornerLeft].Y;
+					data["ir"]["mouth"]["right"]["x"] = faces[count]->facePointIR[FacePointType_MouthCornerRight].X;
+					data["ir"]["mouth"]["right"]["y"] = faces[count]->facePointIR[FacePointType_MouthCornerRight].Y;
+
+
 					hResult = pFaceResult->GetFacePointsInColorSpace(FacePointType::FacePointType_Count, faces[count]->facePoint);
 					if (hresultFails(hResult, "GetFacePointsInColorSpace")) {
 						return;
 					}
-					pFaceResult->get_FaceRotationQuaternion(&faces[count]->faceRotation);
+					data["eye"]["left"]["x"] = faces[count]->facePoint[FacePointType_EyeLeft].X;
+					data["eye"]["left"]["y"] = faces[count]->facePoint[FacePointType_EyeLeft].Y;
+					data["eye"]["right"]["x"] = faces[count]->facePoint[FacePointType_EyeRight].X;
+					data["eye"]["right"]["y"] = faces[count]->facePoint[FacePointType_EyeRight].Y;
+					data["nose"]["x"] = faces[count]->facePoint[FacePointType_Nose].X;
+					data["nose"]["y"] = faces[count]->facePoint[FacePointType_Nose].Y;
+					data["mouth"]["left"]["x"] = faces[count]->facePoint[FacePointType_MouthCornerLeft].X;
+					data["mouth"]["left"]["y"] = faces[count]->facePoint[FacePointType_MouthCornerLeft].Y;
+					data["mouth"]["right"]["x"] = faces[count]->facePoint[FacePointType_MouthCornerRight].X;
+					data["mouth"]["right"]["y"] = faces[count]->facePoint[FacePointType_MouthCornerRight].Y;
+
+					data["faceRotation"]["w"] = faces[count]->faceRotation.w;
+					data["faceRotation"]["x"] = faces[count]->faceRotation.x;
+					data["faceRotation"]["y"] = faces[count]->faceRotation.y;
+					data["faceRotation"]["z"] = faces[count]->faceRotation.z;
+
 					hResult = pFaceResult->GetFaceProperties(FaceProperty::FaceProperty_Count, faces[count]->faceProperty);
 					if (hresultFails(hResult, "GetFaceProperties")) {
 						return;
 					}
+#define YES_OR_MAYBE(a)(faces[count]->faceProperty[a] == DetectionResult_Yes || faces[count]->faceProperty[a] == DetectionResult_Maybe)
+#define NOT_YES(a)(faces[count]->faceProperty[FaceProperty_RightEyeClosed] != DetectionResult_Yes)
+					data["eye"]["right"]["closed"] = NOT_YES(FaceProperty_RightEyeClosed);
+					data["eye"]["left"]["closed"] = NOT_YES(FaceProperty_LeftEyeClosed);
+					data["mouth"]["open"] = YES_OR_MAYBE(FaceProperty_MouthOpen);
+					data["mouth"]["moved"] = YES_OR_MAYBE(FaceFrameFeatures_MouthMoved);
+					data["happy"] = YES_OR_MAYBE(FaceProperty_Happy) || faces[count]->faceProperty[FaceProperty_Happy] == DetectionResult_Unknown; // try hard to be happy
+
+					data["lookingAway"] = YES_OR_MAYBE(FaceFrameFeatures_LookingAway);
+					data["glasses"] = YES_OR_MAYBE(FaceFrameFeatures_Glasses);
+					data["engaged"] = YES_OR_MAYBE(FaceFrameFeatures_FaceEngagement);
+					//bugbug if these are relative to current screen convert them to percents of screen (ie x/size kind of thing)
 					pFaceResult->get_FaceBoundingBoxInColorSpace(&faces[count]->boundingBox);
-					for (int i = 0; i < faces.size(); i++) {
-						ofxJSONElement data;
-						data["face"][i]["id"] = count;
-						data["face"][i]["eye"]["left"]["closed"] = faces[i]->faceProperty[FaceProperty_LeftEyeClosed] != DetectionResult_Yes;
-						data["face"][i]["eye"]["left"]["x"] = faces[i]->facePoint[FacePointType_EyeLeft].X;
-						data["face"][i]["eye"]["left"]["y"] = faces[i]->facePoint[FacePointType_EyeLeft].Y;
-						data["face"][i]["eye"]["closed"] = faces[i]->faceProperty[FaceProperty_RightEyeClosed] != DetectionResult_Yes;
-						data["face"][i]["eye"]["right"]["x"] = faces[i]->facePoint[FacePointType_EyeRight].X;
-						data["face"][i]["eye"]["right"]["y"] = faces[i]->facePoint[FacePointType_EyeRight].Y;
-						data["face"][i]["nose"]["x"] = faces[i]->facePoint[FacePointType_Nose].X;
-						data["face"][i]["nose"]["y"] = faces[i]->facePoint[FacePointType_Nose].Y;
-						data["face"][i]["mouth"]["left"]["x"] = faces[i]->facePoint[FacePointType_MouthCornerLeft].X;
-						data["face"][i]["mouth"]["left"]["y"] = faces[i]->facePoint[FacePointType_MouthCornerLeft].Y;
-						data["face"][i]["mouth"]["right"]["x"] = faces[i]->facePoint[FacePointType_MouthCornerRight].X;
-						data["face"][i]["mouth"]["right"]["y"] = faces[i]->facePoint[FacePointType_MouthCornerRight].Y;
-						data["face"][i]["mouth"]["open"] = faces[i]->faceProperty[FaceProperty_MouthOpen] == DetectionResult_Yes || faces[i]->faceProperty[FaceProperty_MouthOpen] == DetectionResult_Maybe;
-						data["face"][i]["happy"] = faces[i]->faceProperty[FaceProperty_Happy] == DetectionResult_Yes ||
-							faces[i]->faceProperty[FaceProperty_Happy] == DetectionResult_Maybe || faces
-							[i]->faceProperty[FaceProperty_Happy] == DetectionResult_Unknown; // try hard to be happy
-						comms.send(data, "kinect/face");
+					data["boundingBox"]["top"] = faces[count]->boundingBox.Top;
+					data["boundingBox"]["left"] = faces[count]->boundingBox.Left;
+					data["boundingBox"]["right"] = faces[count]->boundingBox.Right;
+					data["boundingBox"]["bottom"] = faces[count]->boundingBox.Bottom;
+
+					hResult = pFaceResult->get_FaceBoundingBoxInInfraredSpace(&faces[count]->boundingBox);
+					data["ir"]["boundingBox"]["top"] = faces[count]->boundingBox.Top;
+					data["ir"]["boundingBox"]["left"] = faces[count]->boundingBox.Left;
+					data["ir"]["boundingBox"]["right"] = faces[count]->boundingBox.Right;
+					data["ir"]["boundingBox"]["bottom"] = faces[count]->boundingBox.Bottom;
+
+					string s;
+					if (faces[count]->faceRotation.x) {
+						s = data.getRawString();
 					}
+					comms.send(data, "kinect/face");
+
 					SafeRelease(pFaceResult);
 					SafeRelease(pFaceFrame);
 					faces[count]->setValid();
@@ -742,7 +794,7 @@ void KinectFaces::buildFaces() {
 }
 
 
-void KinectAudio::getAudioCommands() {
+void KinectAudio::getAudioCommands(WriteComms &comms) {
 	unsigned long waitObject = WaitForSingleObject(hSpeechEvent, 0);
 	if (waitObject == WAIT_TIMEOUT) {
 		logVerbose("signaled");
@@ -769,6 +821,7 @@ void KinectAudio::getAudioCommands() {
 					HRESULT hResult = pRecoResult->GetPhrase(&pPhrase);
 					if (!hresultFails(hResult, "GetPhrase")) {
 						if ((pPhrase->pProperties != nullptr) && (pPhrase->pProperties->pFirstChild != nullptr)) {
+							ofxJSONElement data;
 							// Compared with the Phrase Tag in the grammar file
 							const SPPHRASEPROPERTY* pSemantic = pPhrase->pProperties->pFirstChild;
 							switch (pSemantic->Confidence) {
@@ -782,7 +835,12 @@ void KinectAudio::getAudioCommands() {
 								logTrace("SP_HIGH_CONFIDENCE: " + Trace::wstrtostr(pSemantic->pszValue));
 								break;
 							}
+
 							if (pSemantic->SREngineConfidence > confidenceThreshold) {
+								data["trackingId"] = audioTrackingId;
+								data["phrase"]["confidence"] = pSemantic->Confidence;//if not enough hit turn down the gain bugbug
+								data["phrase"]["value"] = pSemantic->pszValue;
+								comms.send(data, "kinect/audio");
 								logTrace("SREngineConfidence > confidenceThreshold: " + Trace::wstrtostr(pSemantic->pszValue));
 							}
 						}
@@ -798,10 +856,10 @@ void KinectAudio::getAudioCommands() {
 	}
 
 }
-void KinectAudio::update() { 
-	getAudioBody();
-	getAudioBeam(); 
-	getAudioCommands();
+void KinectAudio::update(WriteComms &comms) {
+	getAudioBody(comms);
+	getAudioBeam(comms);
+	getAudioCommands(comms);
 }
 //http://www.buildinsider.net/small/kinectv2cpp/07
 KinectAudio::KinectAudio(Kinect2552 *pKinect) {
@@ -1013,7 +1071,6 @@ HRESULT KinectAudio::createSpeechRecognizer()
 
 	return hResult;
 }
-
 HRESULT KinectAudio::startSpeechRecognition()
 {
 	HRESULT hResult = pSpeechContext->CreateGrammar(1, &pSpeechGrammar);
@@ -1027,13 +1084,13 @@ HRESULT KinectAudio::startSpeechRecognition()
 	}
 
 	// Specify that all top level rules in grammar are now active
-	hResult = pSpeechGrammar->SetRuleState(NULL, NULL, SPRS_ACTIVE);
+	pSpeechGrammar->SetRuleState(NULL, NULL, SPRS_ACTIVE);
 
 	// Specify that engine should always be reading audio
-	hResult = pSpeechRecognizer->SetRecoState(SPRST_ACTIVE_ALWAYS);
+	pSpeechRecognizer->SetRecoState(SPRST_ACTIVE_ALWAYS);
 
 	// Specify that we're only interested in receiving recognition events
-	hResult = pSpeechContext->SetInterest(SPFEI(SPEI_RECOGNITION), SPFEI(SPEI_RECOGNITION));
+	pSpeechContext->SetInterest(SPFEI(SPEI_RECOGNITION), SPFEI(SPEI_RECOGNITION));
 
 	// Ensure that engine is recognizing speech and not in paused state
 	hResult = pSpeechContext->Resume(0);
@@ -1054,13 +1111,13 @@ void  KinectAudio::setTrackingID(int index, UINT64 trackingId) {
 }
 
 // poll kenict to get audo and the body it came from
-void KinectAudio::getAudioBody() {
-	getAudioCorrelation();
+void KinectAudio::getAudioBody(WriteComms &comms) {
+	getAudioCorrelation(comms);
 	if (correlationCount != 0) {
-		aquireBodyFrame();
+		aquireBodyFrame();//bugbug not sure what to do here
 	}
 }
-void KinectAudio::getAudioCorrelation() {
+void KinectAudio::getAudioCorrelation(WriteComms &comms) {
 	correlationCount = 0;
 	trackingIndex = NoTrackingIndex;
 	audioTrackingId = NoTrackingID;
@@ -1074,16 +1131,14 @@ void KinectAudio::getAudioCorrelation() {
 		if (!hresultFails(hResult, "OpenAudioBeamFrame")) {
 			IAudioBeamSubFrame* pAudioBeamSubFrame = nullptr;
 			hResult = pAudioBeamFrame->GetSubFrame(0, &pAudioBeamSubFrame);
-		
 			if (!hresultFails(hResult, "GetSubFrame")) {
 				hResult = pAudioBeamSubFrame->get_AudioBodyCorrelationCount(&correlationCount);
-				
 				if (SUCCEEDED(hResult) && (correlationCount != 0)) {
 					IAudioBodyCorrelation* pAudioBodyCorrelation = nullptr;
 					hResult = pAudioBeamSubFrame->GetAudioBodyCorrelation(0, &pAudioBodyCorrelation);
 					
 					if (!hresultFails(hResult, "GetAudioBodyCorrelation")) {
-						hResult = pAudioBodyCorrelation->get_BodyTrackingId(&audioTrackingId);
+						pAudioBodyCorrelation->get_BodyTrackingId(&audioTrackingId);
 						SafeRelease(pAudioBodyCorrelation);
 					}
 				}
@@ -1097,7 +1152,7 @@ void KinectAudio::getAudioCorrelation() {
 }
 
 // AudioBeam Frame https://masteringof.wordpress.com/examples/sounds/ https://masteringof.wordpress.com/projects-based-on-book/
-void KinectAudio::getAudioBeam() {
+void KinectAudio::getAudioBeam(WriteComms &comms) {
 
 	IAudioBeamFrameList* pAudioBeamList = nullptr;
 	HRESULT hResult = getAudioBeamReader()->AcquireLatestBeamFrames(&pAudioBeamList);
@@ -1119,13 +1174,19 @@ void KinectAudio::getAudioBeam() {
 				if (!hresultFails(hResult, "get_AudioBeam")) {
 					pAudioBeam->get_BeamAngle(&angle); // radian [-0.872665f, 0.872665f]
 					pAudioBeam->get_BeamAngleConfidence(&confidence); // confidence [0.0f, 1.0f]
+					ofxJSONElement data;
+					data[beam]["angle"] = angle;
+					data[beam]["confidence"] = confidence;
+					data["trackingId"] = audioTrackingId;
+					comms.send(data, "kinect/audio");
 					SafeRelease(pAudioBeam);
 				}
 				SafeRelease(pAudioBeamFrame);
 			}
 		}
 		SafeRelease(pAudioBeamList);
+		}
+
 	}
 
-}
 }
