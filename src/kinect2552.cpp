@@ -152,41 +152,11 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		if (hresultFails(hResult, "AcquireLatestFrame")) {
 			return;
 		}
-		IDepthFrame* depthframe = getDepth(frame);
-		IBodyIndexFrame *bodyIndex = getBodyIndex(frame);
-		IInfraredFrame *infrared = getInfrared(frame);
-		ILongExposureInfraredFrame *longinfrared = getLongExposureInfrared(frame);
 		IBodyFrame* bodyframe = getBody(frame);
-		IColorFrame* colorframe = getColor(frame); // close is the slowest, get it last
 		// if not yet working clean up and exit
-		if (!bodyframe || !colorframe || !bodyframe) {
-			SafeRelease(depthframe);
-			SafeRelease(longinfrared);
-			SafeRelease(infrared);
-			SafeRelease(bodyIndex);
-			SafeRelease(colorframe);
-			SafeRelease(bodyframe);
+		if (!bodyframe) {
 			return;
 		}
-
-		unsigned int sz;
-		unsigned short* buf;
-		hResult = depthframe->AccessUnderlyingBuffer(&sz, &buf);
-
-		float* destXYZ = new float[512 * 424 * 3];
-		float* destrgb = new float[512 * 424 * 3];
-		unsigned char *rgbimage = new unsigned char[1920 * 1080 * 4];
-		//bugbug maybe drop color, its slow and a ton of data, one doc said if you return  the frame too slowly you will evently
-		// get no data from kinect
-		colorframe->CopyConvertedFrameDataToArray(1920 * 1080 * 4, rgbimage, ColorImageFormat_Rgba);
-		depth2RGB(getKinect(), buf, destrgb, rgbimage);
-		depth2XYZ(getKinect(), buf, destXYZ);
-
-		delete rgbimage;
-		delete destXYZ;
-		delete destrgb;
-		SafeRelease(depthframe);
-		SafeRelease(colorframe);
 
 		//HRESULT hResult = getKinect()->getBodyReader()->AcquireLatestFrame(&pBodyFrame);
 		//if (!hresultFails(hResult, "AcquireLatestFrame")) {
@@ -301,16 +271,11 @@ bool Kinect2552::setup(WriteComms &comms) {
 		if (hresultFails(hResult, "IKinectSensor::Open")) {
 			return false;
 		}
-		// get them all, if needed put a conditional around this
+		// we just get body since we are sending data off the box
 		// keep color separate https://social.msdn.microsoft.com/Forums/en-US/4672ca22-4ff2-445b-8574-3011ef16a44c/long-exposure-infrared-vs-infrared?forum=kinectv2sdk
 		//http://blog.csdn.net/guoming0000/article/details/46392909
 		hResult = pSensor->OpenMultiSourceFrameReader(
-			FrameSourceTypes::FrameSourceTypes_Depth
-			| FrameSourceTypes::FrameSourceTypes_Color
-			| FrameSourceTypes::FrameSourceTypes_Infrared
-			| FrameSourceTypes::FrameSourceTypes_LongExposureInfrared
-			| FrameSourceTypes::FrameSourceTypes_BodyIndex
-			| FrameSourceTypes::FrameSourceTypes_Body,
+			 FrameSourceTypes::FrameSourceTypes_Body,
 			&reader);
 		if (hresultFails(hResult, "OpenMultiSourceFrameReader")) {
 			return false;
