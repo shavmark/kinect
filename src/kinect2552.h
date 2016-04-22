@@ -89,12 +89,12 @@ namespace Software2552 {
 		IMultiSourceFrame* frame = nullptr;
 		IMultiSourceFrameReader* reader = nullptr;   // Kinect data source
 		IBodyFrameReference *bodyFrameReference = nullptr;
-		
 
 		IKinectSensor* getSensor() {return pSensor;	}
 		IBodyFrameReader* getBodyReader() {	return pBodyReader;	}
 		IBodyIndexFrameReader* getBodyIndexReader() {return pBodyIndexReader;	}
 		ICoordinateMapper* getMapper() {	return pCoordinateMapper;	}
+
 		HRESULT depth(UINT cameraPointCount, CameraSpacePoint*csp, UINT depthPointCount, DepthSpacePoint *dsp) { return pCoordinateMapper->MapCameraPointsToDepthSpace(1, csp, 1, dsp); }
 		HRESULT color(UINT cameraPointCount, const CameraSpacePoint*csp, UINT depthPointCount, ColorSpacePoint *color) { return pCoordinateMapper->MapCameraPointsToColorSpace(1, csp, 1, color); }
 

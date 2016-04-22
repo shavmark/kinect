@@ -10,29 +10,60 @@ namespace Software2552 {
 IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		IBodyFrame* bodyframe=nullptr;
 		if (frame) {
-			IBodyFrameReference* bodyframeref = NULL;
-			frame->get_BodyFrameReference(&bodyframeref);
-			if (bodyframeref) {
-				bodyframeref->AcquireFrame(&bodyframe);
-				bodyframeref->Release();
-			}
-			else {
-				return nullptr;
+			IBodyFrameReference* pFrameref = NULL;
+			frame->get_BodyFrameReference(&pFrameref);
+			if (pFrameref) {
+				pFrameref->AcquireFrame(&bodyframe);
+				pFrameref->Release();
 			}
 		}
 		return bodyframe;
 	}
+	IBodyIndexFrame* getBodyIndex(IMultiSourceFrame* frame) {
+		IBodyIndexFrame* bodyIndexframe = nullptr;
+		if (frame) {
+			IBodyIndexFrameReference* pFrameref = NULL;
+			frame->get_BodyIndexFrameReference(&pFrameref);
+			if (pFrameref) {
+				pFrameref->AcquireFrame(&bodyIndexframe);
+				pFrameref->Release();
+			}
+		}
+		return bodyIndexframe;
+	}
+	IInfraredFrame* getInfrared(IMultiSourceFrame* frame) {
+		IInfraredFrame* infraredframe = nullptr;
+		if (frame) {
+			IInfraredFrameReference* pFrameref = NULL;
+			frame->get_InfraredFrameReference(&pFrameref);
+			if (pFrameref) {
+				pFrameref->AcquireFrame(&infraredframe);
+				pFrameref->Release();
+			}
+		}
+		return infraredframe;
+	}
+	ILongExposureInfraredFrame* getLongExposureInfrared(IMultiSourceFrame* frame) {
+		ILongExposureInfraredFrame* infraredframe = nullptr;
+		if (frame) {
+			
+			ILongExposureInfraredFrameReference* pFrameref = NULL;
+			frame->get_LongExposureInfraredFrameReference (&pFrameref);
+			if (pFrameref) {
+				pFrameref->AcquireFrame(&infraredframe);
+				pFrameref->Release();
+			}
+		}
+		return infraredframe;
+	}
 	IDepthFrame* getDepth(IMultiSourceFrame* frame) {
 		IDepthFrame* depthframe = nullptr;
 		if (frame) {
-			IDepthFrameReference* depthframeref = NULL;
-			frame->get_DepthFrameReference(&depthframeref);
-			if (depthframeref) {
-				depthframeref->AcquireFrame(&depthframe);
-				depthframeref->Release();
-			}
-			else {
-				return nullptr;
+			IDepthFrameReference* pFrameref = NULL;
+			frame->get_DepthFrameReference(&pFrameref);
+			if (pFrameref) {
+				pFrameref->AcquireFrame(&depthframe);
+				pFrameref->Release();
 			}
 		}
 		return depthframe;
@@ -40,14 +71,11 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 	IColorFrame* getColor(IMultiSourceFrame* frame) {
 		IColorFrame* colorframe=nullptr;
 		if (frame) {
-			IColorFrameReference* colorframeref = NULL;
-			frame->get_ColorFrameReference(&colorframeref);
-			if (colorframeref) {
-				colorframeref->AcquireFrame(&colorframe);
-				colorframeref->Release();
-			}
-			else {
-				return nullptr;
+			IColorFrameReference* pFrameref = NULL;
+			frame->get_ColorFrameReference(&pFrameref);
+			if (pFrameref) {
+				pFrameref->AcquireFrame(&colorframe);
+				pFrameref->Release();
 			}
 		}
 		return colorframe;
@@ -125,11 +153,17 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 			return;
 		}
 		IDepthFrame* depthframe = getDepth(frame);
-		IColorFrame* colorframe = getColor(frame);
+		IBodyIndexFrame *bodyIndex = getBodyIndex(frame);
+		IInfraredFrame *infrared = getInfrared(frame);
+		ILongExposureInfraredFrame *longinfrared = getLongExposureInfrared(frame);
 		IBodyFrame* bodyframe = getBody(frame);
+		IColorFrame* colorframe = getColor(frame); // close is the slowest, get it last
 		// if not yet working clean up and exit
 		if (!bodyframe || !colorframe || !bodyframe) {
 			SafeRelease(depthframe);
+			SafeRelease(longinfrared);
+			SafeRelease(infrared);
+			SafeRelease(bodyIndex);
 			SafeRelease(colorframe);
 			SafeRelease(bodyframe);
 			return;
@@ -142,7 +176,8 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		float* destXYZ = new float[512 * 424 * 3];
 		float* destrgb = new float[512 * 424 * 3];
 		unsigned char *rgbimage = new unsigned char[1920 * 1080 * 4];
-
+		//bugbug maybe drop color, its slow and a ton of data, one doc said if you return  the frame too slowly you will evently
+		// get no data from kinect
 		colorframe->CopyConvertedFrameDataToArray(1920 * 1080 * 4, rgbimage, ColorImageFormat_Rgba);
 		depth2RGB(getKinect(), buf, destrgb, rgbimage);
 		depth2XYZ(getKinect(), buf, destXYZ);
@@ -267,6 +302,8 @@ bool Kinect2552::setup(WriteComms &comms) {
 			return false;
 		}
 		// get them all, if needed put a conditional around this
+		// keep color separate https://social.msdn.microsoft.com/Forums/en-US/4672ca22-4ff2-445b-8574-3011ef16a44c/long-exposure-infrared-vs-infrared?forum=kinectv2sdk
+		//http://blog.csdn.net/guoming0000/article/details/46392909
 		hResult = pSensor->OpenMultiSourceFrameReader(
 			FrameSourceTypes::FrameSourceTypes_Depth
 			| FrameSourceTypes::FrameSourceTypes_Color
