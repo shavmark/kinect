@@ -7,6 +7,51 @@
 //file:///C:/Users/mark/Downloads/KinectHIG.2.0.pdf
 
 namespace Software2552 {
+IBodyFrame* getBody(IMultiSourceFrame* frame) {
+		IBodyFrame* bodyframe=nullptr;
+		if (frame) {
+			IBodyFrameReference* bodyframeref = NULL;
+			frame->get_BodyFrameReference(&bodyframeref);
+			if (bodyframeref) {
+				bodyframeref->AcquireFrame(&bodyframe);
+				bodyframeref->Release();
+			}
+			else {
+				return nullptr;
+			}
+		}
+		return bodyframe;
+	}
+	IDepthFrame* getDepth(IMultiSourceFrame* frame) {
+		IDepthFrame* depthframe = nullptr;
+		if (frame) {
+			IDepthFrameReference* depthframeref = NULL;
+			frame->get_DepthFrameReference(&depthframeref);
+			if (depthframeref) {
+				depthframeref->AcquireFrame(&depthframe);
+				depthframeref->Release();
+			}
+			else {
+				return nullptr;
+			}
+		}
+		return depthframe;
+	}
+	IColorFrame* getColor(IMultiSourceFrame* frame) {
+		IColorFrame* colorframe=nullptr;
+		if (frame) {
+			IColorFrameReference* colorframeref = NULL;
+			frame->get_ColorFrameReference(&colorframeref);
+			if (colorframeref) {
+				colorframeref->AcquireFrame(&colorframe);
+				colorframeref->Release();
+			}
+			else {
+				return nullptr;
+			}
+		}
+		return colorframe;
+	}
 
 	Kinect2552::~Kinect2552() {
 		if (pSensor) {
@@ -25,111 +70,190 @@ namespace Software2552 {
 		SafeRelease(pBodyIndexSource);
 		SafeRelease(pBodyIndexReader);
 	}
+	//const int width = 512;
+	//const const int height = 424;
+	//const const int colorwidth = 1920;
+	//const const int colorheight = 1080;
+	void depth2RGB(Kinect2552 *kinect, unsigned short*buffer, float*destrgb, unsigned char*rgbimage) {
+		ColorSpacePoint * depth2rgb = new ColorSpacePoint[512 * 424];     // Maps depth pixels to rgb pixels
+		if (depth2rgb) {
+			HRESULT hResult = kinect->getMapper()->MapDepthFrameToColorSpace(
+				512 * 424, buffer,        // Depth frame data and size of depth frame
+				512 * 424, depth2rgb); // Output ColorSpacePoint array and size
+									   // Write color array for vertices
+			float* fdest = (float*)destrgb;
+			for (int i = 0; i < 512 * 424; i++) {
+				ColorSpacePoint p = depth2rgb[i];
+				// Check if color pixel coordinates are in bounds
+				if (p.X < 0 || p.Y < 0 || p.X > 1920 || p.Y > 1080) {
+					*fdest++ = 0;
+					*fdest++ = 0;
+					*fdest++ = 0;
+				}
+				else {
+					int idx = (int)p.X + 1920 * (int)p.Y;
+					*fdest++ = rgbimage[4 * idx + 0] / 255.;
+					*fdest++ = rgbimage[4 * idx + 1] / 255.;
+					*fdest++ = rgbimage[4 * idx + 2] / 255.;
+				}
+				// Don't copy alpha channel
+			}
+			delete depth2rgb;
+		}
+	}
+	void depth2XYZ(Kinect2552 *kinect, unsigned short*buffer, float*destXYZ) {
+		CameraSpacePoint * depth2xyz = new CameraSpacePoint[512 * 424];     // Maps depth pixels to rgb pixels
+		if (depth2xyz) {
+			HRESULT hResult = kinect->getMapper()->MapDepthFrameToCameraSpace(
+				512 * 424, buffer,        // Depth frame data and size of depth frame
+				512 * 424, depth2xyz); // Output CameraSpacePoint array and size
+			for (int i = 0; i <512 * 424; i++) { // map to points (not sure what this is yet)
+				destXYZ[3 * i + 0] = depth2xyz[i].X;
+				destXYZ[3 * i + 1] = depth2xyz[i].Y;
+				destXYZ[3 * i + 2] = depth2xyz[i].Z;
+			}
+			delete depth2xyz;
+		}
+
+	}
 	void KinectBody::update(WriteComms &comms) {
-		IBodyFrame* pBodyFrame = nullptr;
-		HRESULT hResult = getKinect()->getBodyReader()->AcquireLatestFrame(&pBodyFrame);
-		if (!hresultFails(hResult, "AcquireLatestFrame")) {
-			IBody* pBody[Kinect2552::personCount] = { 0 };
+		IMultiSourceFrame* frame = NULL;
+		HRESULT hResult;
 
-			hResult = pBodyFrame->GetAndRefreshBodyData(Kinect2552::personCount, pBody);
-			if (!hresultFails(hResult, "GetAndRefreshBodyData")) {
-				for (int count = 0; count < Kinect2552::personCount; count++) {
-					// breaks here
-					BOOLEAN bTracked = false;
+		hResult = getKinect()->reader->AcquireLatestFrame(&frame); // gets all data in one shot
+		if (hresultFails(hResult, "AcquireLatestFrame")) {
+			return;
+		}
+		IDepthFrame* depthframe = getDepth(frame);
+		IColorFrame* colorframe = getColor(frame);
+		IBodyFrame* bodyframe = getBody(frame);
+		// if not yet working clean up and exit
+		if (!bodyframe || !colorframe || !bodyframe) {
+			SafeRelease(depthframe);
+			SafeRelease(colorframe);
+			SafeRelease(bodyframe);
+			return;
+		}
 
-					hResult = pBody[count]->get_IsTracked(&bTracked);
-					if (SUCCEEDED(hResult) && bTracked) {
+		unsigned int sz;
+		unsigned short* buf;
+		hResult = depthframe->AccessUnderlyingBuffer(&sz, &buf);
+
+		float* destXYZ = new float[512 * 424 * 3];
+		float* destrgb = new float[512 * 424 * 3];
+		unsigned char *rgbimage = new unsigned char[1920 * 1080 * 4];
+
+		colorframe->CopyConvertedFrameDataToArray(1920 * 1080 * 4, rgbimage, ColorImageFormat_Rgba);
+		depth2RGB(getKinect(), buf, destrgb, rgbimage);
+		depth2XYZ(getKinect(), buf, destXYZ);
+
+		delete rgbimage;
+		delete destXYZ;
+		delete destrgb;
+		SafeRelease(depthframe);
+		SafeRelease(colorframe);
+
+		//HRESULT hResult = getKinect()->getBodyReader()->AcquireLatestFrame(&pBodyFrame);
+		//if (!hresultFails(hResult, "AcquireLatestFrame")) {
+		IBody* pBody[BODY_COUNT] = { 0 };
+
+		hResult = bodyframe->GetAndRefreshBodyData(BODY_COUNT, pBody);
+		if (!hresultFails(hResult, "GetAndRefreshBodyData")) {
+			for (int count = 0; count < BODY_COUNT; count++) {
+				// breaks here
+				BOOLEAN bTracked = false;
+
+				hResult = pBody[count]->get_IsTracked(&bTracked);
+				if (SUCCEEDED(hResult) && bTracked) {
+					ofxJSONElement data;
+					Joint joints[JointType::JointType_Count];
+					HandState leftHandState = HandState::HandState_Unknown;
+					HandState rightHandState = HandState::HandState_Unknown;
+					PointF leanAmount;
+
+					// Set TrackingID to Detect Face
+					UINT64 trackingId = _UI64_MAX;
+					hResult = pBody[count]->get_TrackingId(&trackingId);
+					if (hresultFails(hResult, "get_TrackingId")) {
+						break;
+					}
+					data["trackingId"] = trackingId;
+					if (audio) {
+						// see if any audio there
+						audio->getAudioCorrelation(comms);
+						//bugbug can we use the tracking id, and is valid id, here vs creating our own?
+						if (audio->getTrackingID() == trackingId) {
+							audio->update(comms);
+							data["talking"] = true;
+						}
+					}
+					//setTrackingID(count, trackingId); // use our own tracking id for faces
+					if (faces) {
+						setTrackingID(count, trackingId);// keep face on track with body
+						faces->update(comms, trackingId);//bugbug need to simplfy this but see what happens for now
+					}
+
+					// get joints
+					hResult = pBody[count]->GetJoints(JointType::JointType_Count, joints);
+					if (!hresultFails(hResult, "GetJoints")) {
+						// Left Hand State
+						hResult = pBody[count]->get_HandLeftState(&leftHandState);
+						if (hresultFails(hResult, "get_HandLeftState")) {
+							break;
+						}
+						data["left"] = leftHandState;
+						hResult = pBody[count]->get_HandRightState(&rightHandState);
+						if (hresultFails(hResult, "get_HandRightState")) {
+							break;
+						}
+						data["right"] = rightHandState;
+						// Lean
+						hResult = pBody[count]->get_Lean(&leanAmount);
+						if (hresultFails(hResult, "get_Lean")) {
+							break;
+						}
+						data["lean"]["x"] = leanAmount.X;
+						data["lean"]["y"] = leanAmount.Y;
+					}
+
+					comms.send(data, "kinect/body");
+					for (int i = 0; i < JointType::JointType_Count; ++i) {
 						ofxJSONElement data;
-						Joint joints[JointType::JointType_Count];
-						HandState leftHandState = HandState::HandState_Unknown;
-						HandState rightHandState = HandState::HandState_Unknown;
-						PointF leanAmount;
-
-						// Set TrackingID to Detect Face
-						UINT64 trackingId = _UI64_MAX;
-						hResult = pBody[count]->get_TrackingId(&trackingId);
-						if (hresultFails(hResult, "get_TrackingId")) {
-							return;
-						}
 						data["trackingId"] = trackingId;
-						if (audio) {
-							// see if any audio there
-							audio->getAudioCorrelation(comms);
-							//bugbug can we use the tracking id, and is valid id, here vs creating our own?
-							if (audio->getTrackingID() == trackingId) {
-								audio->update(comms);
-								data["talking"] = true;
-							}
-						}
-						//setTrackingID(count, trackingId); // use our own tracking id for faces
-						if (faces) {
-							setTrackingID(count, trackingId);// keep face on track with body
-							faces->update(comms, trackingId);//bugbug need to simplfy this but see what happens for now
-						}
 
-						// get joints
-						hResult = pBody[count]->GetJoints(JointType::JointType_Count, joints);
-						if (!hresultFails(hResult, "GetJoints")) {
-							// Left Hand State
-							hResult = pBody[count]->get_HandLeftState(&leftHandState);
-							if (hresultFails(hResult, "get_HandLeftState")) {
-								return;
-							}
-							data["left"] = leftHandState;
-							hResult = pBody[count]->get_HandRightState(&rightHandState);
-							if (hresultFails(hResult, "get_HandRightState")) {
-								return;
-							}
-							data["right"] = rightHandState;
-							// Lean
-							hResult = pBody[count]->get_Lean(&leanAmount);
-							if (hresultFails(hResult, "get_Lean")) {
-								return;
-							}
-							data["lean"]["x"] = leanAmount.X;
-							data["lean"]["y"] = leanAmount.Y;
+						CameraSpacePoint position = joints[i].Position;
+						DepthSpacePoint depthSpacePoint;
+						ColorSpacePoint colorSpacePoint;
+						HRESULT hResult = getKinect()->depth(1, &position, 1, &depthSpacePoint);
+						if (hresultFails(hResult, "depth")) {
+							break;
 						}
-
-						comms.send(data, "kinect/body");
-						for (int i = 0; i < JointType::JointType_Count; ++i) {
-							ofxJSONElement data;
-							data["trackingId"] = trackingId;
-
-							CameraSpacePoint position = joints[i].Position;
-							DepthSpacePoint depthSpacePoint;
-							ColorSpacePoint colorSpacePoint;
-							HRESULT hResult = getKinect()->depth(1, &position, 1, &depthSpacePoint);
-							if (hresultFails(hResult, "depth")) {
-								break;
-							}
-							hResult = getKinect()->color(1, &position, 1, &colorSpacePoint);
-							if (hresultFails(hResult, "color")) {
-								break;
-							}
-							//bugbug maybe track the last one sent and then only send whats changed
-							// then the listener just keeps on data set current
-							data["jointType"] = joints[i].JointType;
-							data["trackingState"] = joints[i].TrackingState;
-							data["depth"]["x"] = depthSpacePoint.X;
-							data["depth"]["y"] = depthSpacePoint.Y;
-							data["color"]["x"] = colorSpacePoint.X;
-							data["color"]["y"] = colorSpacePoint.Y;
-							data["cam"]["x"] = position.X;
-							data["cam"]["y"] = position.Y;
-							data["cam"]["z"] = position.Z;
-							string s = data.getRawString();
-							data["kinectID"] = getKinect()->getId();
-							comms.send(data, "kinect/joints");
+						hResult = getKinect()->color(1, &position, 1, &colorSpacePoint);
+						if (hresultFails(hResult, "color")) {
+							break;
 						}
+						//bugbug maybe track the last one sent and then only send whats changed
+						// then the listener just keeps on data set current
+						data["jointType"] = joints[i].JointType;
+						data["trackingState"] = joints[i].TrackingState;
+						data["depth"]["x"] = depthSpacePoint.X;
+						data["depth"]["y"] = depthSpacePoint.Y;
+						data["color"]["x"] = colorSpacePoint.X;
+						data["color"]["y"] = colorSpacePoint.Y;
+						data["cam"]["x"] = position.X;
+						data["cam"]["y"] = position.Y;
+						data["cam"]["z"] = position.Z;
+						string s = data.getRawString();
+						data["kinectID"] = getKinect()->getId();
+						comms.send(data, "kinect/joints");
 					}
 				}
 			}
-			for (int count = 0; count < Kinect2552::personCount; count++) {
-				SafeRelease(pBody[count]);
-			}
 		}
-
-		SafeRelease(pBodyFrame);
+		for (int count = 0; count < BODY_COUNT; count++) {
+			SafeRelease(pBody[count]);
+		}
+		SafeRelease(bodyframe);
 }
 
 bool Kinect2552::setup(WriteComms &comms) {
@@ -142,7 +266,19 @@ bool Kinect2552::setup(WriteComms &comms) {
 		if (hresultFails(hResult, "IKinectSensor::Open")) {
 			return false;
 		}
-		
+		// get them all, if needed put a conditional around this
+		hResult = pSensor->OpenMultiSourceFrameReader(
+			FrameSourceTypes::FrameSourceTypes_Depth
+			| FrameSourceTypes::FrameSourceTypes_Color
+			| FrameSourceTypes::FrameSourceTypes_Infrared
+			| FrameSourceTypes::FrameSourceTypes_LongExposureInfrared
+			| FrameSourceTypes::FrameSourceTypes_BodyIndex
+			| FrameSourceTypes::FrameSourceTypes_Body,
+			&reader);
+		if (hresultFails(hResult, "OpenMultiSourceFrameReader")) {
+			return false;
+		}
+
 		hResult = pSensor->get_BodyIndexFrameSource(&pBodyIndexSource);
 		if (hresultFails(hResult, "get_BodyIndexFrameSource")) {
 			return false;
@@ -183,11 +319,6 @@ bool Kinect2552::setup(WriteComms &comms) {
 		if (hresultFails(hResult, "pDepthSource OpenReader")) {
 			return false;
 		}
-
-		int widthColor = 0; // size of the kinect frames
-		int heightColor = 0;
-		int widthDepth = 0; // size of the kinect frames
-		int heightDepth = 0;
 
 		hResult = pColorSource->get_FrameDescription(&pDescriptionColor);
 		if (hresultFails(hResult, "get_FrameDescription pDescriptionColor")) {
@@ -276,7 +407,7 @@ void KinectFaces::setTrackingID(int index, UINT64 trackingId) {
 // return true if face found
 void KinectFaces::update(WriteComms &comms, UINT64 trackingId)
 {
-	for (int count = 0; count < Kinect2552::personCount; count++) {
+	for (int count = 0; count < BODY_COUNT; count++) {
 		IFaceFrame* pFaceFrame = nullptr;
 		HRESULT hResult = faces[count]->getFaceReader()->AcquireLatestFrame(&pFaceFrame); // faces[count].getFaceReader() was pFaceReader[count]
 		if (SUCCEEDED(hResult) && pFaceFrame != nullptr) {
@@ -364,7 +495,7 @@ void KinectFaces::update(WriteComms &comms, UINT64 trackingId)
 	}
 }
 void KinectFaces::buildFaces() {
-	for (int i = 0; i < Kinect2552::personCount; ++i) {
+	for (int i = 0; i < BODY_COUNT; ++i) {
 		shared_ptr<KinectFace> p = make_shared<KinectFace>(getKinect());
 		if (p) {
 			HRESULT hResult;

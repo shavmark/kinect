@@ -86,11 +86,15 @@ namespace Software2552 {
 
 		bool setup(WriteComms &comms);
 
+		IMultiSourceFrame* frame = nullptr;
+		IMultiSourceFrameReader* reader = nullptr;   // Kinect data source
+		IBodyFrameReference *bodyFrameReference = nullptr;
+		
+
 		IKinectSensor* getSensor() {return pSensor;	}
 		IBodyFrameReader* getBodyReader() {	return pBodyReader;	}
 		IBodyIndexFrameReader* getBodyIndexReader() {return pBodyIndexReader;	}
-
-		static const int personCount = BODY_COUNT;
+		ICoordinateMapper* getMapper() {	return pCoordinateMapper;	}
 		HRESULT depth(UINT cameraPointCount, CameraSpacePoint*csp, UINT depthPointCount, DepthSpacePoint *dsp) { return pCoordinateMapper->MapCameraPointsToDepthSpace(1, csp, 1, dsp); }
 		HRESULT color(UINT cameraPointCount, const CameraSpacePoint*csp, UINT depthPointCount, ColorSpacePoint *color) { return pCoordinateMapper->MapCameraPointsToColorSpace(1, csp, 1, color); }
 
@@ -98,6 +102,10 @@ namespace Software2552 {
 
 	private:
 		string kinectID; 
+		int widthColor = 0; // size of the kinect frames
+		int heightColor = 0;
+		int widthDepth = 0; // size of the kinect frames
+		int heightDepth = 0;
 
 		IKinectSensor*     pSensor = nullptr;
 
@@ -117,6 +125,7 @@ namespace Software2552 {
 		IBodyIndexFrameReader* pBodyIndexReader = nullptr;
 
 		ICoordinateMapper* pCoordinateMapper = nullptr;
+
 	};
 
 	class KinectBaseClass {
