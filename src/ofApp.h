@@ -41,7 +41,7 @@ class ofApp : public ofBaseApp{
 		Software2552::Kinect2552 kinect;
 		Software2552::WriteComms comms;
 
-		shared_ptr<Software2552::KinectBodies> bodies=nullptr;
+		shared_ptr<Software2552::KinectBody> bodies=nullptr;
 		shared_ptr<Software2552::KinectFaces> faces = nullptr;
 		shared_ptr<Software2552::KinectAudio> audio = nullptr;
 

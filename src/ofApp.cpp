@@ -5,7 +5,7 @@ void ofApp::setup(){
 	comms.setup();
 	kinect.setup(comms);
 
-	bodies = std::make_shared<Software2552::KinectBodies>(&kinect);
+	bodies = std::make_shared<Software2552::KinectBody>(&kinect);
 	faces = std::make_shared<Software2552::KinectFaces>(&kinect);
 	audio = std::make_shared<Software2552::KinectAudio>(&kinect);
 

@@ -1,6 +1,9 @@
 
 #include "ofApp.h"
 
+//SetKinectTwoPersonSystemEngagement vs one?
+//InputPointerManager.TransformInputPointerCoordinatesToWindowCoordinates
+
 //file:///C:/Users/mark/Downloads/KinectHIG.2.0.pdf
 
 namespace Software2552 {
@@ -22,7 +25,7 @@ namespace Software2552 {
 		SafeRelease(pBodyIndexSource);
 		SafeRelease(pBodyIndexReader);
 	}
-	void KinectBodies::update(WriteComms &comms) {
+	void KinectBody::update(WriteComms &comms) {
 		IBodyFrame* pBodyFrame = nullptr;
 		HRESULT hResult = getKinect()->getBodyReader()->AcquireLatestFrame(&pBodyFrame);
 		if (!hresultFails(hResult, "AcquireLatestFrame")) {
@@ -50,14 +53,19 @@ namespace Software2552 {
 							return;
 						}
 						data["trackingId"] = trackingId;
-						setTrackingID(count, trackingId); //bugbug if this fails should we just readJsonValue an error and return?
-						if (usingAudio()) {
+						if (audio) {
 							// see if any audio there
 							audio->getAudioCorrelation(comms);
+							//bugbug can we use the tracking id, and is valid id, here vs creating our own?
 							if (audio->getTrackingID() == trackingId) {
 								audio->update(comms);
 								data["talking"] = true;
 							}
+						}
+						//setTrackingID(count, trackingId); // use our own tracking id for faces
+						if (faces) {
+							setTrackingID(count, trackingId);// keep face on track with body
+							faces->update(comms, trackingId);//bugbug need to simplfy this but see what happens for now
 						}
 
 						// get joints
@@ -122,10 +130,6 @@ namespace Software2552 {
 		}
 
 		SafeRelease(pBodyFrame);
-
-		if (usingFaces()) {
-			KinectFaces::update(comms);//bugbug cleanup the classes a bit, audio should not be a base class
-		}
 }
 
 bool Kinect2552::setup(WriteComms &comms) {
@@ -229,8 +233,8 @@ KinectFaces::~KinectFaces() {
 	}
 
 }
-void KinectBodies::setTrackingID(int index, UINT64 trackingId) {
-	if (usingFaces()) {
+void KinectBody::setTrackingID(int index, UINT64 trackingId) {
+	if (faces) {
 		faces->setTrackingID(index, trackingId);
 	}
 }
@@ -244,16 +248,12 @@ void KinectFaces::setTrackingID(int index, UINT64 trackingId) {
 		logErrorString("not enough faces");
 		return;
 	}
-	faces[index]->pFaceSource->put_TrackingId(trackingId);
+	faces[index]->getFaceSource()->put_TrackingId(trackingId);
 }
 
 // return true if face found
-void KinectFaces::update(WriteComms &comms)
+void KinectFaces::update(WriteComms &comms, UINT64 trackingId)
 {
-	if (faces.size() < Kinect2552::personCount) {
-		logErrorString("not enough faces:"+ ofToString(faces.size()));
-		return;
-	}
 	for (int count = 0; count < Kinect2552::personCount; count++) {
 		IFaceFrame* pFaceFrame = nullptr;
 		HRESULT hResult = faces[count]->getFaceReader()->AcquireLatestFrame(&pFaceFrame); // faces[count].getFaceReader() was pFaceReader[count]
@@ -264,6 +264,11 @@ void KinectFaces::update(WriteComms &comms)
 				IFaceFrameResult* pFaceResult = nullptr;
 				hResult = pFaceFrame->get_FaceFrameResult(&pFaceResult);
 				if (SUCCEEDED(hResult) && pFaceResult != nullptr) {
+					UINT64 id;
+					pFaceFrame->get_TrackingId(&id);
+					if (id != trackingId) {
+						return; // not sure abou this yet
+					}
 					// check for real data first
 					Vector4 faceRotation;
 					pFaceResult->get_FaceRotationQuaternion(&faceRotation);
@@ -276,11 +281,9 @@ void KinectFaces::update(WriteComms &comms)
 					DetectionResult faceProperty[FaceProperty::FaceProperty_Count];
 					RectI boundingBox;
 
-					UINT64 tid = 0;
-					pFaceResult->get_TrackingId(&tid);
 					ofxJSONElement data;
 
-					data["trackingId"] = tid;
+					data["trackingId"] = id;
 
 					hResult = pFaceResult->GetFacePointsInColorSpace(FacePointType::FacePointType_Count, facePoint);
 					if (hresultFails(hResult, "GetFacePointsInColorSpace")) {
@@ -352,6 +355,7 @@ void KinectFaces::buildFaces() {
 			if (hresultFails(hResult, "face.pFaceSource->OpenReader")) {
 				return;
 			}
+
 			faces.push_back(p);
 		}
 	}

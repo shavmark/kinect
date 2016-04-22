@@ -147,10 +147,10 @@ namespace Software2552 {
 		~KinectFaces();
 
 		void setup();
-		void update(WriteComms &comms);
-		void setTrackingID(int index, UINT64 trackingId); // map to person
-	protected:
+		void update(WriteComms &comms, UINT64 trackingId);
+		void setTrackingID(int index, UINT64 trackingId); // map to body
 		vector<shared_ptr<KinectFace>> faces;
+	protected:
 
 		// features are the same for all faces
 		DWORD features = FaceFrameFeatures::FaceFrameFeatures_BoundingBoxInColorSpace
@@ -171,7 +171,7 @@ namespace Software2552 {
 
 	class KinectAudio : public KinectBaseClass {
 	public:
-		friend class KinectBodies;
+		friend class KinectBody;
 
 		KinectAudio(Kinect2552 *pKinect) :KinectBaseClass(pKinect) {};
 
@@ -181,6 +181,8 @@ namespace Software2552 {
 
 		void getAudioCorrelation(WriteComms &comms);
 		UINT64 getTrackingID() { return audioTrackingId; }
+		IAudioBeamFrameReader* getAudioBeamReader() { return pAudioBeamReader; }
+		IAudioSource* getAudioSource() { return pAudioSource; }
 
 	protected:
 		bool confident() { return  getConfidence() > 0.5f; }
@@ -197,8 +199,6 @@ namespace Software2552 {
 		void update(WriteComms &comms);
 		const UINT64 NoTrackingID = _UI64_MAX - 1;
 		const UINT64 NoTrackingIndex = -1;
-		IAudioBeamFrameReader* getAudioBeamReader() {	return pAudioBeamReader;	}
-		IAudioSource* getAudioSource() {		return pAudioSource;	}
 
 		HRESULT findKinect();
 		HRESULT setupSpeachStream();
@@ -221,24 +221,20 @@ namespace Software2552 {
 		UINT32 correlationCount = 0;
 	};
 
-	class KinectBodies : public KinectFaces {
+	class KinectBody : public KinectBaseClass {
 	public:
-		KinectBodies(Kinect2552 *pKinect) : KinectFaces(pKinect) {  }
+		KinectBody(Kinect2552 *pKinect) : KinectBaseClass(pKinect) {  }
 
 		void update(WriteComms &comms);
 
 		void useFaces(shared_ptr<KinectFaces> facesIn)  { faces = facesIn; }
-		bool usingFaces() { return faces != nullptr; }
-
 		void useAudio(shared_ptr<KinectAudio> audioIn) { audio = audioIn; }
-		bool usingAudio() { return audio != nullptr; }
 
 	private:
 
 		// audio id tracks to sound bugbug how does faces do it?
 		void setTrackingID(int index, UINT64 trackingId);
-		shared_ptr<KinectAudio> audio=nullptr;
-
+		shared_ptr<KinectAudio> audio = nullptr;
 		shared_ptr<KinectFaces> faces = nullptr;
 	};
 }
