@@ -3,7 +3,7 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
 	comms.setup();
-	kinect.open();
+	kinect.setup(comms);
 	audio.setup(&kinect);
 
 	faces.setup(&kinect);

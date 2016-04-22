@@ -96,6 +96,8 @@
   <ItemGroup>
     <ClCompile Include="..\storyteller\src\networking.cpp" />
     <ClCompile Include="src\kinect2552.cpp" />
+    <ClCompile Include="src\kinectSound.cpp" />
+    <ClCompile Include="src\kinectUtils.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\ofApp.cpp" />
     <ClCompile Include="..\..\..\addons\ofxJson\src\ofxJSONElement.cpp" />

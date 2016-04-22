@@ -58,8 +58,9 @@ namespace Software2552 {
 
 	class KinectAudioStream : public IStream	{
 	public:
-		KinectAudioStream(IStream *p32BitAudioStream);
-		void SetSpeechState(bool state);
+		KinectAudioStream(IStream *p32BitAudio) : m_cRef(1), m_p32BitAudio(p32BitAudio), m_SpeechActive(false) {}
+
+		void SetSpeechState(bool state) { m_SpeechActive = state; }
 
 		STDMETHODIMP_(ULONG) AddRef() { return InterlockedIncrement(&m_cRef); }
 		STDMETHODIMP_(ULONG) Release();
@@ -85,10 +86,11 @@ namespace Software2552 {
 	
 	class Kinect2552 : public KinectBaseClass {
 	public:
-		Kinect2552();
+		Kinect2552() :KinectBaseClass() {	}
+
 		~Kinect2552();
 
-		bool open();
+		bool setup(WriteComms &comms);
 
 		IKinectSensor* getSensor() {
 			return pSensor;
@@ -99,10 +101,6 @@ namespace Software2552 {
 		IBodyIndexFrameReader* getBodyIndexReader() {
 			return pBodyIndexReader;
 		}
-		int widthColor=0; // size of the kinect frames
-		int heightColor = 0;
-		int widthDepth = 0; // size of the kinect frames
-		int heightDepth = 0;
 		static const int personCount = BODY_COUNT;
 		HRESULT depth(UINT cameraPointCount, CameraSpacePoint*csp, UINT depthPointCount, DepthSpacePoint *dsp) { return pCoordinateMapper->MapCameraPointsToDepthSpace(1, csp, 1, dsp); }
 		HRESULT color(UINT cameraPointCount, const CameraSpacePoint*csp, UINT depthPointCount, ColorSpacePoint *color) { return pCoordinateMapper->MapCameraPointsToColorSpace(1, csp, 1, color); }
@@ -133,7 +131,7 @@ namespace Software2552 {
 	class BodyItems : public KinectBaseClass {
 	public:
 		BodyItems() :KinectBaseClass(){}
-		void setupKinect(Kinect2552 *pKinectIn);
+		void setupKinect(Kinect2552 *pKinectIn) {pKinect = pKinectIn;	};
 		Kinect2552 *getKinect() { checkPointer(pKinect, "getKinect"); return pKinect; }
 
 	protected:
@@ -145,16 +143,11 @@ namespace Software2552 {
 
 	class KinectBody : public BodyItems {
 	public:
-		KinectBody(Kinect2552 *pKinect = nullptr);
-
-		Joint* getJoints() { return joints; }
-		HandState* leftHand() { return &leftHandState; };
-		HandState* rightHand() { return &rightHandState; };
-		PointF *lean() { return &leanAmount; }
+		KinectBody::KinectBody(Kinect2552 *pKinect) {setupKinect(pKinect);}
 
 		Joint joints[JointType::JointType_Count];
-		HandState leftHandState;
-		HandState rightHandState;
+		HandState leftHandState = HandState::HandState_Unknown;
+		HandState rightHandState = HandState::HandState_Unknown;
 		PointF leanAmount;
 		
 	};
@@ -166,7 +159,6 @@ namespace Software2552 {
 		KinectFace(Kinect2552 *pKinect = nullptr) {
 			setupKinect(pKinect);
 		}
-		~KinectFace();
 		void cleanup();
 
 		IFaceFrameReader* getFaceReader() {
@@ -193,17 +185,26 @@ namespace Software2552 {
 
 	class KinectFaces : public BodyItems {
 	public:
-		KinectFaces();
 		~KinectFaces();
 
 		void setup(Kinect2552 *);
 		void update(WriteComms &comms);
 	protected:
 		vector<shared_ptr<KinectFace>> faces;
-		void ExtractFaceRotationInDegrees(const Vector4* pQuaternion, int* pPitch, int* pYaw, int* pRoll);
 		void setTrackingID(int index, UINT64 trackingId);
-
-		DWORD features;
+		
+		// features are the same for all faces
+		DWORD features = FaceFrameFeatures::FaceFrameFeatures_BoundingBoxInColorSpace
+			| FaceFrameFeatures::FaceFrameFeatures_PointsInColorSpace
+			| FaceFrameFeatures::FaceFrameFeatures_RotationOrientation
+			| FaceFrameFeatures::FaceFrameFeatures_Happy
+			| FaceFrameFeatures::FaceFrameFeatures_RightEyeClosed
+			| FaceFrameFeatures::FaceFrameFeatures_LeftEyeClosed
+			| FaceFrameFeatures::FaceFrameFeatures_MouthOpen
+			| FaceFrameFeatures::FaceFrameFeatures_MouthMoved
+			| FaceFrameFeatures::FaceFrameFeatures_LookingAway
+			| FaceFrameFeatures::FaceFrameFeatures_Glasses
+			| FaceFrameFeatures::FaceFrameFeatures_FaceEngagement;
 	private:
 		void buildFaces();
 
@@ -231,18 +232,13 @@ namespace Software2552 {
 		virtual void setTrackingID(int index, UINT64 trackingId);
 		HRESULT createSpeechRecognizer();
 		HRESULT startSpeechRecognition();
+
 	private:
 		void update(WriteComms &comms);
 		const UINT64 NoTrackingID = _UI64_MAX - 1;
 		const UINT64 NoTrackingIndex = -1;
-		IAudioBeamFrameReader* getAudioBeamReader() {
-			checkPointer(pAudioBeamReader, "getAudioBeamReader");
-			return pAudioBeamReader;
-		}
-		IAudioSource* getAudioSource() {
-			checkPointer(pAudioSource, "getAudioSource");
-			return pAudioSource;
-		}
+		IAudioBeamFrameReader* getAudioBeamReader() {	return pAudioBeamReader;	}
+		IAudioSource* getAudioSource() {		return pAudioSource;	}
 
 		HRESULT findKinect();
 		HRESULT setupSpeachStream();
@@ -281,7 +277,6 @@ namespace Software2552 {
 		bool includeFaces;
 		bool includeAudio;
 		void setTrackingID(int index, UINT64 trackingId);
-		vector<shared_ptr<KinectBody>> bodies;
 		KinectAudio audio;
 	};
 }

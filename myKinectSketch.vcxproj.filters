@@ -55,6 +55,12 @@
     <ClCompile Include="..\storyteller\src\networking.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\kinectSound.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\kinectUtils.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="src">
