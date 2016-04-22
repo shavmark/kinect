@@ -9,15 +9,11 @@
 // https://github.com/Microsoft/DirectX-Graphics-Samples
 
 namespace Software2552 {
-	class KinectBaseClass {
-	public:
-	};
 
 	// can be, but does not need to be, a base class as its all static and can just be called, could not even be a class I suppose
-	class Trace : public KinectBaseClass {
+	class Trace  {
 	public:
 		static bool checkPointer2(IUnknown *p, const string&  message, char*file = __FILE__, int line = __LINE__);
-		static bool checkPointer2(KinectBaseClass *p, const string&  message, char*file = __FILE__, int line = __LINE__);
 
 		static void logError2(const string& error, char*file, int line);
 		static void logVerbose2(const string& message, char*file, int line) {
@@ -84,23 +80,16 @@ namespace Software2552 {
 	};
 
 	
-	class Kinect2552 : public KinectBaseClass {
+	class Kinect2552  {
 	public:
-		Kinect2552() :KinectBaseClass() {	}
-
 		~Kinect2552();
 
 		bool setup(WriteComms &comms);
 
-		IKinectSensor* getSensor() {
-			return pSensor;
-		}
-		IBodyFrameReader* getBodyReader() {
-			return pBodyReader;
-		}
-		IBodyIndexFrameReader* getBodyIndexReader() {
-			return pBodyIndexReader;
-		}
+		IKinectSensor* getSensor() {return pSensor;	}
+		IBodyFrameReader* getBodyReader() {	return pBodyReader;	}
+		IBodyIndexFrameReader* getBodyIndexReader() {return pBodyIndexReader;	}
+
 		static const int personCount = BODY_COUNT;
 		HRESULT depth(UINT cameraPointCount, CameraSpacePoint*csp, UINT depthPointCount, DepthSpacePoint *dsp) { return pCoordinateMapper->MapCameraPointsToDepthSpace(1, csp, 1, dsp); }
 		HRESULT color(UINT cameraPointCount, const CameraSpacePoint*csp, UINT depthPointCount, ColorSpacePoint *color) { return pCoordinateMapper->MapCameraPointsToColorSpace(1, csp, 1, color); }
@@ -126,73 +115,43 @@ namespace Software2552 {
 		ICoordinateMapper* pCoordinateMapper = nullptr;
 	};
 
-
-	//base class for things like faces
-	class BodyItems : public KinectBaseClass {
+	class KinectBaseClass {
 	public:
-		BodyItems() :KinectBaseClass(){}
-		void setupKinect(Kinect2552 *pKinectIn) {pKinect = pKinectIn;	};
-		Kinect2552 *getKinect() { checkPointer(pKinect, "getKinect"); return pKinect; }
-
-	protected:
-		virtual void setTrackingID(int index, UINT64 trackingId) {};
-
+		KinectBaseClass(Kinect2552 *pKinectIn) { pKinect = pKinectIn; }
+		Kinect2552 *getKinect() { return pKinect; }
 	private:
 		Kinect2552 *pKinect;
 	};
 
-	class KinectBody : public BodyItems {
-	public:
-		KinectBody::KinectBody(Kinect2552 *pKinect) {setupKinect(pKinect);}
 
-		Joint joints[JointType::JointType_Count];
-		HandState leftHandState = HandState::HandState_Unknown;
-		HandState rightHandState = HandState::HandState_Unknown;
-		PointF leanAmount;
-		
-	};
-
-	
-	//bugbug remove
-	class KinectFace : public BodyItems {
+	class KinectFace : public KinectBaseClass {
 	public:
-		KinectFace(Kinect2552 *pKinect = nullptr) {
-			setupKinect(pKinect);
-		}
+		KinectFace(Kinect2552 *pKinect) : KinectBaseClass(pKinect) {}
 		void cleanup();
 
-		IFaceFrameReader* getFaceReader() {
-			checkPointer(pFaceReader, "getFaceReader");
-			return pFaceReader;
-		}
-		IFaceFrameSource* getFaceSource() {
-			checkPointer(pFaceSource, "getFaceSource");
-			return pFaceSource;
-		}
+		IFaceFrameReader* getFaceReader() {	return pFaceReader;	}
+		IFaceFrameSource* getFaceSource() {	return pFaceSource;	}
 
 		friend class KinectFaces;
 		
 	protected:
-		PointF facePoint[FacePointType::FacePointType_Count];
-		PointF facePointIR[FacePointType::FacePointType_Count];
-		DetectionResult faceProperty[FaceProperty::FaceProperty_Count];
-		RectI boundingBox;
-		Vector4 faceRotation;
+		
 		IFaceFrameReader* pFaceReader;
 		IFaceFrameSource* pFaceSource;
-
 	};
-
-	class KinectFaces : public BodyItems {
+	// one optional face for every kinect person
+	class KinectFaces : public KinectBaseClass {
 	public:
+		KinectFaces(Kinect2552 *pKinect) : KinectBaseClass(pKinect) {}
+
 		~KinectFaces();
 
-		void setup(Kinect2552 *);
+		void setup();
 		void update(WriteComms &comms);
+		void setTrackingID(int index, UINT64 trackingId); // map to person
 	protected:
 		vector<shared_ptr<KinectFace>> faces;
-		void setTrackingID(int index, UINT64 trackingId);
-		
+
 		// features are the same for all faces
 		DWORD features = FaceFrameFeatures::FaceFrameFeatures_BoundingBoxInColorSpace
 			| FaceFrameFeatures::FaceFrameFeatures_PointsInColorSpace
@@ -210,14 +169,15 @@ namespace Software2552 {
 
 	};
 
-	class KinectAudio : public BodyItems {
+	class KinectAudio : public KinectBaseClass {
 	public:
 		friend class KinectBodies;
 
-		KinectAudio(Kinect2552 *pKinect = nullptr);
+		KinectAudio(Kinect2552 *pKinect) :KinectBaseClass(pKinect) {};
+
 		~KinectAudio();
 
-		void setup(Kinect2552 *pKinect);
+		void setup();
 
 		void getAudioCorrelation(WriteComms &comms);
 		UINT64 getTrackingID() { return audioTrackingId; }
@@ -243,7 +203,7 @@ namespace Software2552 {
 		HRESULT findKinect();
 		HRESULT setupSpeachStream();
 
-		IAudioSource*		   pAudioSource = nullptr;
+		IAudioSource* pAudioSource = nullptr;
 		IAudioBeamFrameReader* pAudioBeamReader = nullptr;
 		IAudioBeamList* pAudioBeamList = nullptr;
 		IAudioBeam* pAudioBeam = nullptr;
@@ -254,8 +214,8 @@ namespace Software2552 {
 		ISpRecoGrammar* pSpeechGrammar = nullptr;
 		HANDLE hSpeechEvent = INVALID_HANDLE_VALUE;
 		KinectAudioStream* audioStream = nullptr;
-		UINT64 audioTrackingId=0;
-		int trackingIndex=0;
+		UINT64 audioTrackingId= NoTrackingID;
+		int trackingIndex= NoTrackingID;
 		float angle = 0.0f;
 		float confidence = 0.0f;
 		UINT32 correlationCount = 0;
@@ -263,20 +223,22 @@ namespace Software2552 {
 
 	class KinectBodies : public KinectFaces {
 	public:
-		KinectBodies() : KinectFaces() { useFaces(); useAudio(); }
+		KinectBodies(Kinect2552 *pKinect) : KinectFaces(pKinect) {  }
+
 		void update(WriteComms &comms);
-		void setup(Kinect2552 *kinectInput);
 
-		void useFaces(bool usefaces = true)  { includeFaces = usefaces; }
-		bool usingFaces() { return includeFaces; }
+		void useFaces(shared_ptr<KinectFaces> facesIn)  { faces = facesIn; }
+		bool usingFaces() { return faces != nullptr; }
 
-		void useAudio(bool useaudio = true) { includeAudio = useaudio; }
-		bool usingAudio() { return includeAudio; }
+		void useAudio(shared_ptr<KinectAudio> audioIn) { audio = audioIn; }
+		bool usingAudio() { return audio != nullptr; }
 
 	private:
-		bool includeFaces;
-		bool includeAudio;
+
+		// audio id tracks to sound bugbug how does faces do it?
 		void setTrackingID(int index, UINT64 trackingId);
-		KinectAudio audio;
+		shared_ptr<KinectAudio> audio=nullptr;
+
+		shared_ptr<KinectFaces> faces = nullptr;
 	};
 }

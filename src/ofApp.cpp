@@ -4,16 +4,25 @@
 void ofApp::setup(){
 	comms.setup();
 	kinect.setup(comms);
-	audio.setup(&kinect);
 
-	faces.setup(&kinect);
-	bodies.useFaces();
-	bodies.setup(&kinect);
+	bodies = std::make_shared<Software2552::KinectBodies>(&kinect);
+	faces = std::make_shared<Software2552::KinectFaces>(&kinect);
+	audio = std::make_shared<Software2552::KinectAudio>(&kinect);
+
+	if (bodies && faces && audio) {
+		audio->setup();
+		faces->setup();
+		bodies->useFaces(faces);
+		bodies->useAudio(audio);
+	}
+
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
-	bodies.update(comms);
+	if (bodies) {
+		bodies->update(comms);
+	}
 }
 
 //--------------------------------------------------------------

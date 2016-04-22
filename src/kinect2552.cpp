@@ -22,20 +22,6 @@ namespace Software2552 {
 		SafeRelease(pBodyIndexSource);
 		SafeRelease(pBodyIndexReader);
 	}
-	void KinectBodies::setup(Kinect2552 *kinectInput) {
-
-		if (usingFaces()) {
-			KinectFaces::setup(kinectInput);
-		}
-		else {
-			setupKinect(kinectInput); // skip the base class setup, its not needed here
-		}
-
-		if (usingAudio()) {
-			audio.setup(kinectInput);
-		}
-
-	}
 	void KinectBodies::update(WriteComms &comms) {
 		IBodyFrame* pBodyFrame = nullptr;
 		HRESULT hResult = getKinect()->getBodyReader()->AcquireLatestFrame(&pBodyFrame);
@@ -67,9 +53,9 @@ namespace Software2552 {
 						setTrackingID(count, trackingId); //bugbug if this fails should we just readJsonValue an error and return?
 						if (usingAudio()) {
 							// see if any audio there
-							audio.getAudioCorrelation(comms);
-							if (audio.getTrackingID() == trackingId) {
-								audio.update(comms);
+							audio->getAudioCorrelation(comms);
+							if (audio->getTrackingID() == trackingId) {
+								audio->update(comms);
 								data["talking"] = true;
 							}
 						}
@@ -244,14 +230,12 @@ KinectFaces::~KinectFaces() {
 
 }
 void KinectBodies::setTrackingID(int index, UINT64 trackingId) {
-	if (usingFaces() && faces.size() >= index) {
-		faces[index]->getFaceSource()->put_TrackingId(trackingId); 
+	if (usingFaces()) {
+		faces->setTrackingID(index, trackingId);
 	}
 }
 // get the face readers
-void KinectFaces::setup(Kinect2552 *kinectInput) {
-
-	setupKinect(kinectInput);
+void KinectFaces::setup() {
 	buildFaces();
 }
 
@@ -280,57 +264,65 @@ void KinectFaces::update(WriteComms &comms)
 				IFaceFrameResult* pFaceResult = nullptr;
 				hResult = pFaceFrame->get_FaceFrameResult(&pFaceResult);
 				if (SUCCEEDED(hResult) && pFaceResult != nullptr) {
-					pFaceResult->get_FaceRotationQuaternion(&faces[count]->faceRotation);
-					if (!faces[count]->faceRotation.x && !faces[count]->faceRotation.y && !faces[count]->faceRotation.w && !faces[count]->faceRotation.z) {
+					// check for real data first
+					Vector4 faceRotation;
+					pFaceResult->get_FaceRotationQuaternion(&faceRotation);
+					if (!faceRotation.x && !faceRotation.y && !faceRotation.w && !faceRotation.z) {
 						return;// noise
 					}
+
+					PointF facePoint[FacePointType::FacePointType_Count];
+					PointF facePointIR[FacePointType::FacePointType_Count];
+					DetectionResult faceProperty[FaceProperty::FaceProperty_Count];
+					RectI boundingBox;
+
 					UINT64 tid = 0;
 					pFaceResult->get_TrackingId(&tid);
 					ofxJSONElement data;
 
 					data["trackingId"] = tid;
 
-					hResult = pFaceResult->GetFacePointsInColorSpace(FacePointType::FacePointType_Count, faces[count]->facePoint);
+					hResult = pFaceResult->GetFacePointsInColorSpace(FacePointType::FacePointType_Count, facePoint);
 					if (hresultFails(hResult, "GetFacePointsInColorSpace")) {
 						return;
 					}
-					data["eye"]["left"]["x"] = faces[count]->facePoint[FacePointType_EyeLeft].X;
-					data["eye"]["left"]["y"] = faces[count]->facePoint[FacePointType_EyeLeft].Y;
-					data["eye"]["right"]["x"] = faces[count]->facePoint[FacePointType_EyeRight].X;
-					data["eye"]["right"]["y"] = faces[count]->facePoint[FacePointType_EyeRight].Y;
-					data["nose"]["x"] = faces[count]->facePoint[FacePointType_Nose].X;
-					data["nose"]["y"] = faces[count]->facePoint[FacePointType_Nose].Y;
-					data["mouth"]["left"]["x"] = faces[count]->facePoint[FacePointType_MouthCornerLeft].X;
-					data["mouth"]["left"]["y"] = faces[count]->facePoint[FacePointType_MouthCornerLeft].Y;
-					data["mouth"]["right"]["x"] = faces[count]->facePoint[FacePointType_MouthCornerRight].X;
-					data["mouth"]["right"]["y"] = faces[count]->facePoint[FacePointType_MouthCornerRight].Y;
+					data["eye"]["left"]["x"] = facePoint[FacePointType_EyeLeft].X;
+					data["eye"]["left"]["y"] = facePoint[FacePointType_EyeLeft].Y;
+					data["eye"]["right"]["x"] = facePoint[FacePointType_EyeRight].X;
+					data["eye"]["right"]["y"] = facePoint[FacePointType_EyeRight].Y;
+					data["nose"]["x"] = facePoint[FacePointType_Nose].X;
+					data["nose"]["y"] = facePoint[FacePointType_Nose].Y;
+					data["mouth"]["left"]["x"] = facePoint[FacePointType_MouthCornerLeft].X;
+					data["mouth"]["left"]["y"] = facePoint[FacePointType_MouthCornerLeft].Y;
+					data["mouth"]["right"]["x"] = facePoint[FacePointType_MouthCornerRight].X;
+					data["mouth"]["right"]["y"] = facePoint[FacePointType_MouthCornerRight].Y;
 
-					data["faceRotation"]["w"] = faces[count]->faceRotation.w;
-					data["faceRotation"]["x"] = faces[count]->faceRotation.x;
-					data["faceRotation"]["y"] = faces[count]->faceRotation.y;
-					data["faceRotation"]["z"] = faces[count]->faceRotation.z;
+					data["faceRotation"]["w"] = faceRotation.w;
+					data["faceRotation"]["x"] = faceRotation.x;
+					data["faceRotation"]["y"] = faceRotation.y;
+					data["faceRotation"]["z"] = faceRotation.z;
 
-					hResult = pFaceResult->GetFaceProperties(FaceProperty::FaceProperty_Count, faces[count]->faceProperty);
+					hResult = pFaceResult->GetFaceProperties(FaceProperty::FaceProperty_Count, faceProperty);
 					if (hresultFails(hResult, "GetFaceProperties")) {
 						return;
 					}
-#define YES_OR_MAYBE(a)(faces[count]->faceProperty[a] == DetectionResult_Yes || faces[count]->faceProperty[a] == DetectionResult_Maybe)
-#define NOT_YES(a)(faces[count]->faceProperty[FaceProperty_RightEyeClosed] != DetectionResult_Yes)
+#define YES_OR_MAYBE(a)(faceProperty[a] == DetectionResult_Yes || faceProperty[a] == DetectionResult_Maybe)
+#define NOT_YES(a)(faceProperty[FaceProperty_RightEyeClosed] != DetectionResult_Yes)
 					data["eye"]["right"]["closed"] = NOT_YES(FaceProperty_RightEyeClosed);
 					data["eye"]["left"]["closed"] = NOT_YES(FaceProperty_LeftEyeClosed);
 					data["mouth"]["open"] = YES_OR_MAYBE(FaceProperty_MouthOpen);
 					data["mouth"]["moved"] = YES_OR_MAYBE(FaceFrameFeatures_MouthMoved);
-					data["happy"] = YES_OR_MAYBE(FaceProperty_Happy) || faces[count]->faceProperty[FaceProperty_Happy] == DetectionResult_Unknown; // try hard to be happy
+					data["happy"] = YES_OR_MAYBE(FaceProperty_Happy) || faceProperty[FaceProperty_Happy] == DetectionResult_Unknown; // try hard to be happy
 
 					data["lookingAway"] = YES_OR_MAYBE(FaceFrameFeatures_LookingAway);
 					data["glasses"] = YES_OR_MAYBE(FaceFrameFeatures_Glasses);
 					data["engaged"] = YES_OR_MAYBE(FaceFrameFeatures_FaceEngagement);
 					//bugbug if these are relative to current screen convert them to percents of screen (ie x/size kind of thing)
-					pFaceResult->get_FaceBoundingBoxInColorSpace(&faces[count]->boundingBox);
-					data["boundingBox"]["top"] = faces[count]->boundingBox.Top;
-					data["boundingBox"]["left"] = faces[count]->boundingBox.Left;
-					data["boundingBox"]["right"] = faces[count]->boundingBox.Right;
-					data["boundingBox"]["bottom"] = faces[count]->boundingBox.Bottom;
+					pFaceResult->get_FaceBoundingBoxInColorSpace(&boundingBox);
+					data["boundingBox"]["top"] = boundingBox.Top;
+					data["boundingBox"]["left"] = boundingBox.Left;
+					data["boundingBox"]["right"] = boundingBox.Right;
+					data["boundingBox"]["bottom"] = boundingBox.Bottom;
 
 					comms.send(data, "kinect/face");
 

@@ -15,6 +15,7 @@
 #include "ofxJSON.h"
 #include "networking.h"
 #include "kinect2552.h"
+#include <memory>
 
 #include "ofMain.h"
 
@@ -36,10 +37,13 @@ class ofApp : public ofBaseApp{
 		void windowResized(int w, int h);
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
-		Software2552::KinectBodies bodies;
-		Software2552::KinectFaces faces;
-		Software2552::KinectAudio audio;
+
 		Software2552::Kinect2552 kinect;
 		Software2552::WriteComms comms;
+
+		shared_ptr<Software2552::KinectBodies> bodies=nullptr;
+		shared_ptr<Software2552::KinectFaces> faces = nullptr;
+		shared_ptr<Software2552::KinectAudio> audio = nullptr;
+
 		
 };
