@@ -93,7 +93,11 @@ namespace Software2552 {
 		static const int personCount = BODY_COUNT;
 		HRESULT depth(UINT cameraPointCount, CameraSpacePoint*csp, UINT depthPointCount, DepthSpacePoint *dsp) { return pCoordinateMapper->MapCameraPointsToDepthSpace(1, csp, 1, dsp); }
 		HRESULT color(UINT cameraPointCount, const CameraSpacePoint*csp, UINT depthPointCount, ColorSpacePoint *color) { return pCoordinateMapper->MapCameraPointsToColorSpace(1, csp, 1, color); }
+
+		const string &getId() { return kinectID; }
+
 	private:
+		string kinectID; 
 
 		IKinectSensor*     pSensor = nullptr;
 

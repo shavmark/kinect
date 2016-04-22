@@ -46,7 +46,6 @@ namespace Software2552 {
 						PointF leanAmount;
 
 						// Set TrackingID to Detect Face
-						// LEFT OFF HERE
 						UINT64 trackingId = _UI64_MAX;
 						hResult = pBody[count]->get_TrackingId(&trackingId);
 						if (hresultFails(hResult, "get_TrackingId")) {
@@ -119,6 +118,7 @@ namespace Software2552 {
 							data["cam"]["y"] = position.Y;
 							data["cam"]["z"] = position.Z;
 							string s = data.getRawString();
+							data["kinectID"] = getKinect()->getId();
 							comms.send(data, "kinect/joints");
 						}
 					}
@@ -203,17 +203,39 @@ bool Kinect2552::setup(WriteComms &comms) {
 		pDescriptionDepth->get_Width(&widthDepth);
 		pDescriptionDepth->get_Height(&heightDepth);
 
+		hResult = pSensor->get_CoordinateMapper(&pCoordinateMapper);
+		if (hresultFails(hResult, "get_CoordinateMapper")) {
+			return false;
+		}
+
+		// wait for sensor, will wait for ever
+		BOOLEAN avail = false;
+		do {
+			pSensor->get_IsAvailable(&avail);
+			if (avail) {
+				break;
+			}
+			else {
+				ofSleepMillis(100);
+			}
+		} while (1);
+
+		WCHAR id[256] = { 0 };
+		hResult = pSensor->get_UniqueKinectId(256, id);
+		if (hresultFails(hResult, "get_UniqueKinectId")) {
+			return false;
+		}
+		for (size_t i = 0; i < id[0] != 0; ++i) {
+			kinectID += id[i];
+		}
+
 		ofxJSONElement data;
 		data["width"]["color"] = widthColor;
 		data["width"]["depth"] = widthDepth;
 		data["height"]["color"] = heightColor;
 		data["height"]["depth"] = heightDepth;
+		data["kinectID"] = kinectID;
 		comms.send(data, "kinect/install");
-
-		hResult = pSensor->get_CoordinateMapper(&pCoordinateMapper);
-		if (hresultFails(hResult, "get_CoordinateMapper")) {
-			return false;
-		}
 
 		logTrace("Kinect signed on, life is good.");
 
@@ -327,6 +349,7 @@ void KinectFaces::update(WriteComms &comms, UINT64 trackingId)
 					data["boundingBox"]["right"] = boundingBox.Right;
 					data["boundingBox"]["bottom"] = boundingBox.Bottom;
 
+					data["kinectID"] = getKinect()->getId();
 					comms.send(data, "kinect/face");
 
 					SafeRelease(pFaceResult);
