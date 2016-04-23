@@ -91,8 +91,6 @@ namespace Software2552 {
 		IBodyFrameReference *bodyFrameReference = nullptr;
 
 		IKinectSensor* getSensor() {return pSensor;	}
-		IBodyFrameReader* getBodyReader() {	return pBodyReader;	}
-		IBodyIndexFrameReader* getBodyIndexReader() {return pBodyIndexReader;	}
 		ICoordinateMapper* getMapper() {	return pCoordinateMapper;	}
 
 		HRESULT depth(UINT cameraPointCount, CameraSpacePoint*csp, UINT depthPointCount, DepthSpacePoint *dsp) { return pCoordinateMapper->MapCameraPointsToDepthSpace(1, csp, 1, dsp); }
@@ -102,30 +100,8 @@ namespace Software2552 {
 
 	private:
 		string kinectID; 
-		int widthColor = 0; // size of the kinect frames
-		int heightColor = 0;
-		int widthDepth = 0; // size of the kinect frames
-		int heightDepth = 0;
-
 		IKinectSensor*     pSensor = nullptr;
-
-		IColorFrameReader* pColorReader = nullptr;
-		IColorFrameSource* pColorSource = nullptr;
-
-		IDepthFrameReader* pDepthReader = nullptr; // depth and IR not deeply support, bugbug should they be? not sure.
-		IDepthFrameSource* pDepthSource = nullptr;
-
-		IFrameDescription* pDescriptionColor = nullptr;
-		IFrameDescription* pDescriptionDepth = nullptr;
-
-		IBodyFrameReader*  pBodyReader = nullptr;
-		IBodyFrameSource*  pBodySource = nullptr;
-
-		IBodyIndexFrameSource* pBodyIndexSource = nullptr;
-		IBodyIndexFrameReader* pBodyIndexReader = nullptr;
-
 		ICoordinateMapper* pCoordinateMapper = nullptr;
-
 	};
 
 	class KinectBaseClass {
@@ -238,13 +214,12 @@ namespace Software2552 {
 	public:
 		KinectBody(Kinect2552 *pKinect) : KinectBaseClass(pKinect) {  }
 
-		void update(WriteComms &comms);
-
+		void update(ofImage& image, WriteComms &comms);
 		void useFaces(shared_ptr<KinectFaces> facesIn)  { faces = facesIn; }
 		void useAudio(shared_ptr<KinectAudio> audioIn) { audio = audioIn; }
 
 	private:
-
+		void updateImage(ofImage& image, IMultiSourceFrame* frame);
 		// audio id tracks to sound bugbug how does faces do it?
 		void setTrackingID(int index, UINT64 trackingId);
 		shared_ptr<KinectAudio> audio = nullptr;

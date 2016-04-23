@@ -3,7 +3,7 @@
 
 //SetKinectTwoPersonSystemEngagement vs one?
 //InputPointerManager.TransformInputPointerCoordinatesToWindowCoordinates
-
+// https://social.msdn.microsoft.com/Forums/en-US/f29a202a-fa27-4cfc-9079-5addad0906e0/how-can-i-map-a-depth-frame-to-camera-space-without-having-a-kinect-on-hand?forum=kinectv2sdk
 //file:///C:/Users/mark/Downloads/KinectHIG.2.0.pdf
 
 namespace Software2552 {
@@ -86,17 +86,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 			pSensor->Close();
 		}
 		SafeRelease(pSensor);
-		SafeRelease(pColorReader);
-		SafeRelease(pBodyReader);
-		SafeRelease(pDepthReader);
-		SafeRelease(pDescriptionColor);
-		SafeRelease(pDescriptionDepth);
-		SafeRelease(pDepthSource);
-		SafeRelease(pColorSource);
-		SafeRelease(pBodySource);
 		SafeRelease(pCoordinateMapper);
-		SafeRelease(pBodyIndexSource);
-		SafeRelease(pBodyIndexReader);
 	}
 	//const int width = 512;
 	//const const int height = 424;
@@ -144,7 +134,40 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		}
 
 	}
-	void KinectBody::update(WriteComms &comms) {
+	void KinectBody::updateImage(ofImage& image, IMultiSourceFrame* frame) {
+		IBodyIndexFrame * bodyindex = getBodyIndex(frame);
+		if (!bodyindex) {
+			return;
+		}
+		int width = 512;
+		int height = 424;
+		unsigned int bufferSize = 0;
+		unsigned char* buffer = nullptr;
+		HRESULT hResult = bodyindex->AccessUnderlyingBuffer(&bufferSize, &buffer);
+		if (SUCCEEDED(hResult)) {
+			image.allocate(width, height, OF_IMAGE_COLOR);
+			for (float y = 0; y < height; y++) {
+				for (float x = 0; x < width; x++) {
+					unsigned int index = y * width + x;
+					if (buffer[index] != 0xff) {
+						float hue = x / width * 255;
+						float sat = ofMap(y, 0, height / 2, 0, 255, true);
+						float bri = ofMap(y, height / 2, height, 255, 0, true);
+						// make a dynamic image, also there can be up to 6 images so we need them to be a little different 
+						image.setColor(x, y, ofColor::fromHsb(hue, sat, bri));
+					}
+					else {
+						image.setColor(x, y, ofColor::white);
+					}
+				}
+			}
+			image.update();
+		}
+
+		SafeRelease(bodyindex);
+
+	}
+	void KinectBody::update(ofImage& image, WriteComms &comms) {
 		IMultiSourceFrame* frame = NULL;
 		HRESULT hResult;
 
@@ -153,13 +176,11 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 			return;
 		}
 		IBodyFrame* bodyframe = getBody(frame);
-		// if not yet working clean up and exit
 		if (!bodyframe) {
 			return;
 		}
-
-		//HRESULT hResult = getKinect()->getBodyReader()->AcquireLatestFrame(&pBodyFrame);
-		//if (!hresultFails(hResult, "AcquireLatestFrame")) {
+		updateImage(image, frame);
+		
 		IBody* pBody[BODY_COUNT] = { 0 };
 
 		hResult = bodyframe->GetAndRefreshBodyData(BODY_COUNT, pBody);
@@ -259,6 +280,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 			SafeRelease(pBody[count]);
 		}
 		SafeRelease(bodyframe);
+		SafeRelease(frame);
 }
 
 bool Kinect2552::setup(WriteComms &comms) {
@@ -275,66 +297,13 @@ bool Kinect2552::setup(WriteComms &comms) {
 		// keep color separate https://social.msdn.microsoft.com/Forums/en-US/4672ca22-4ff2-445b-8574-3011ef16a44c/long-exposure-infrared-vs-infrared?forum=kinectv2sdk
 		//http://blog.csdn.net/guoming0000/article/details/46392909
 		hResult = pSensor->OpenMultiSourceFrameReader(
-			 FrameSourceTypes::FrameSourceTypes_Body,
+			 FrameSourceTypes::FrameSourceTypes_Body|
+			 FrameSourceTypes_BodyIndex
+			,
 			&reader);
 		if (hresultFails(hResult, "OpenMultiSourceFrameReader")) {
 			return false;
 		}
-
-		hResult = pSensor->get_BodyIndexFrameSource(&pBodyIndexSource);
-		if (hresultFails(hResult, "get_BodyIndexFrameSource")) {
-			return false;
-		}
-
-		hResult = pSensor->get_ColorFrameSource(&pColorSource);
-		if (hresultFails(hResult, "get_ColorFrameSource")) {
-			return false;
-		}
-		
-		hResult = pSensor->get_BodyFrameSource(&pBodySource);
-		if (hresultFails(hResult, "get_BodyFrameSource")) {
-			return false;
-		}
-
-		hResult = pSensor->get_DepthFrameSource(&pDepthSource);
-		if (hresultFails(hResult, "get_DepthFrameSource")) {
-			return false;
-		}
-
-		hResult = pBodyIndexSource->OpenReader(&pBodyIndexReader);
-		if (hresultFails(hResult, "pBodyIndexSource OpenReader")) {
-			return false;
-		}
-
-		hResult = pColorSource->OpenReader(&pColorReader);
-		if (hresultFails(hResult, "pColorSource OpenReader")) {
-			return false;
-		}
-		
-		hResult = pBodySource->OpenReader(&pBodyReader);
-		if (hresultFails(hResult, "pBodySource OpenReader")) {
-			return false;
-		}
-
-		//bugbug what do we do with these readers?
-		hResult = pDepthSource->OpenReader(&pDepthReader);
-		if (hresultFails(hResult, "pDepthSource OpenReader")) {
-			return false;
-		}
-
-		hResult = pColorSource->get_FrameDescription(&pDescriptionColor);
-		if (hresultFails(hResult, "get_FrameDescription pDescriptionColor")) {
-			return false;
-		}
-		pDescriptionColor->get_Width(&widthColor);
-		pDescriptionColor->get_Height(&heightColor);
-
-		hResult = pDepthSource->get_FrameDescription(&pDescriptionDepth);
-		if (hresultFails(hResult, "get_FrameDescription pDescriptionColor")) {
-			return false;
-		}
-		pDescriptionDepth->get_Width(&widthDepth);
-		pDescriptionDepth->get_Height(&heightDepth);
 
 		hResult = pSensor->get_CoordinateMapper(&pCoordinateMapper);
 		if (hresultFails(hResult, "get_CoordinateMapper")) {
@@ -361,14 +330,14 @@ bool Kinect2552::setup(WriteComms &comms) {
 		for (size_t i = 0; i < id[0] != 0; ++i) {
 			kinectID += id[i];
 		}
-
 		ofxJSONElement data;
-		data["width"]["color"] = widthColor;
-		data["width"]["depth"] = widthDepth;
-		data["height"]["color"] = heightColor;
-		data["height"]["depth"] = heightDepth;
+		data["width"]["color"] = 1920;
+		data["width"]["depth"] = 512;
+		data["height"]["color"] = 1080;
+		data["height"]["depth"] = 424;
 		data["kinectID"] = kinectID;
 		comms.send(data, "kinect/install");
+
 
 		logTrace("Kinect signed on, life is good.");
 
