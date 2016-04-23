@@ -1,5 +1,6 @@
 #pragma once
 #pragma once
+
 #define Foundation_UnWindows_INCLUDED
 // For M_PI and log definitions
 #define _USE_MATH_DEFINES
@@ -46,5 +47,6 @@ class ofApp : public ofBaseApp{
 		shared_ptr<Software2552::KinectAudio> audio = nullptr;
 
 		ofImage image;
+		ofImage imageir;
 
 };

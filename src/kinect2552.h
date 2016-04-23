@@ -214,12 +214,13 @@ namespace Software2552 {
 	public:
 		KinectBody(Kinect2552 *pKinect) : KinectBaseClass(pKinect) {  }
 
-		void update(ofImage& image, WriteComms &comms);
+		void update(ofImage& image, ofImage& imageir, WriteComms &comms);
 		void useFaces(shared_ptr<KinectFaces> facesIn)  { faces = facesIn; }
 		void useAudio(shared_ptr<KinectAudio> audioIn) { audio = audioIn; }
 
 	private:
 		void updateImage(ofImage& image, IMultiSourceFrame* frame);
+		void updateImageIR(ofImage& image, IMultiSourceFrame* frame);
 		// audio id tracks to sound bugbug how does faces do it?
 		void setTrackingID(int index, UINT64 trackingId);
 		shared_ptr<KinectAudio> audio = nullptr;

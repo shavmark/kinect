@@ -21,15 +21,18 @@ void ofApp::setup(){
 //--------------------------------------------------------------
 void ofApp::update(){
 	if (bodies) {
-		bodies->update(image, comms);
+		bodies->update(image, imageir, comms);
 	}
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
+	ofSetColor(ofColor::white);
 	if (image.isAllocated()) {
-		ofSetColor(ofColor::white);
 		image.draw(0, 0);
+	}
+	if (imageir.isAllocated()) {
+		imageir.draw(ofGetWidth() / 2, 0);
 	}
 	//faces.draw();
 	//bodies.draw();

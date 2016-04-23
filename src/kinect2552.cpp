@@ -134,6 +134,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		}
 
 	}
+	
 	void KinectBody::updateImage(ofImage& image, IMultiSourceFrame* frame) {
 		IBodyIndexFrame * bodyindex = getBodyIndex(frame);
 		if (!bodyindex) {
@@ -167,7 +168,32 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		SafeRelease(bodyindex);
 
 	}
-	void KinectBody::update(ofImage& image, WriteComms &comms) {
+	void KinectBody::updateImageIR(ofImage& image, IMultiSourceFrame* frame) {
+		IInfraredFrame * ir = getInfrared(frame);
+		if (!ir) {
+			return;
+		}
+		int width = 512;
+		int height = 424;
+		UINT bufferSize = 0;
+		UINT16 * buffer = nullptr;
+		HRESULT hResult = ir->AccessUnderlyingBuffer(&bufferSize, &buffer);
+		int i;
+		if (SUCCEEDED(hResult)) {
+			image.allocate(width, height, OF_IMAGE_COLOR);
+			for (float y = 0; y < height; y++) {
+				for (float x = 0; x < width; x++) {
+					unsigned int index = y * width + x;
+					image.setColor(x, y, ofColor::fromHsb(255, 50, buffer[index]));
+				}
+			}
+			image.update();
+		}
+
+		SafeRelease(ir);
+
+	}
+	void KinectBody::update(ofImage& image, ofImage& imageir, WriteComms &comms) {
 		IMultiSourceFrame* frame = NULL;
 		HRESULT hResult;
 
@@ -180,7 +206,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 			return;
 		}
 		updateImage(image, frame);
-		
+		updateImageIR(imageir, frame);
 		IBody* pBody[BODY_COUNT] = { 0 };
 
 		hResult = bodyframe->GetAndRefreshBodyData(BODY_COUNT, pBody);
@@ -298,7 +324,7 @@ bool Kinect2552::setup(WriteComms &comms) {
 		//http://blog.csdn.net/guoming0000/article/details/46392909
 		hResult = pSensor->OpenMultiSourceFrameReader(
 			 FrameSourceTypes::FrameSourceTypes_Body|
-			 FrameSourceTypes_BodyIndex
+			 FrameSourceTypes_BodyIndex | FrameSourceTypes_Infrared
 			,
 			&reader);
 		if (hresultFails(hResult, "OpenMultiSourceFrameReader")) {
