@@ -1,2 +1,4 @@
-ofxJson
+ofxNetwork
 ofxOsc
+ofxJson
+ofxSnappy

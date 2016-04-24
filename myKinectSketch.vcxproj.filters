@@ -52,15 +52,34 @@
     <ClCompile Include="src\kinect2552.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\storyteller\src\networking.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="src\kinectSound.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\kinectUtils.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\addons\ofxSnappy\libs\snappy\src\snappy-sinksource.cc">
+      <Filter>addons\ofxSnappy\libs\snappy\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\addons\ofxSnappy\libs\snappy\src\snappy-stubs-internal.cc">
+      <Filter>addons\ofxSnappy\libs\snappy\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\addons\ofxSnappy\libs\snappy\src\snappy.cc">
+      <Filter>addons\ofxSnappy\libs\snappy\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\addons\ofxNetwork\src\ofxTCPClient.cpp">
+      <Filter>addons\ofxNetwork\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\addons\ofxNetwork\src\ofxTCPManager.cpp">
+      <Filter>addons\ofxNetwork\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\addons\ofxNetwork\src\ofxTCPServer.cpp">
+      <Filter>addons\ofxNetwork\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\addons\ofxNetwork\src\ofxUDPManager.cpp">
+      <Filter>addons\ofxNetwork\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\CommonCode\networking.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="src">
@@ -113,6 +132,24 @@
     </Filter>
     <Filter Include="addons\ofxOsc\libs\oscpack\src\osc">
       <UniqueIdentifier>{EDACB89C-9768-9551-4D41-B590}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="addons\ofxSnappy">
+      <UniqueIdentifier>{6bed3563-7a1a-466b-9bc9-a4a26b2efb66}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="addons\ofxSnappy\libs">
+      <UniqueIdentifier>{e9842a5e-a5ca-44eb-a1b0-32724ec78e1b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="addons\ofxSnappy\libs\snappy">
+      <UniqueIdentifier>{05d0bf8f-bcf7-422b-bda1-684d540b88da}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="addons\ofxSnappy\libs\snappy\src">
+      <UniqueIdentifier>{8fcca134-02f4-4cec-ab89-97b06ff431ba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="addons\ofxNetwork">
+      <UniqueIdentifier>{629e8040-3981-4309-b1bf-ba4987cec707}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="addons\ofxNetwork\src">
+      <UniqueIdentifier>{ac404822-2e76-4af3-adf2-1a7b72f80b78}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -194,9 +231,40 @@
     <ClInclude Include="src\kinect2552.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="..\storyteller\src\networking.h">
-      <Filter>src</Filter>
+    <ClInclude Include="..\..\..\addons\ofxSnappy\libs\snappy\src\snappy-internal.h">
+      <Filter>addons\ofxSnappy\libs\snappy\src</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\addons\ofxSnappy\libs\snappy\src\snappy-sinksource.h">
+      <Filter>addons\ofxSnappy\libs\snappy\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\addons\ofxSnappy\libs\snappy\src\snappy-stubs-internal.h">
+      <Filter>addons\ofxSnappy\libs\snappy\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\addons\ofxSnappy\libs\snappy\src\snappy-stubs-public.h">
+      <Filter>addons\ofxSnappy\libs\snappy\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\addons\ofxSnappy\libs\snappy\src\snappy.h">
+      <Filter>addons\ofxSnappy\libs\snappy\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\addons\ofxNetwork\src\ofxNetwork.h">
+      <Filter>addons\ofxNetwork\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\addons\ofxNetwork\src\ofxNetworkUtils.h">
+      <Filter>addons\ofxNetwork\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\addons\ofxNetwork\src\ofxTCPClient.h">
+      <Filter>addons\ofxNetwork\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\addons\ofxNetwork\src\ofxTCPManager.h">
+      <Filter>addons\ofxNetwork\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\addons\ofxNetwork\src\ofxTCPServer.h">
+      <Filter>addons\ofxNetwork\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\addons\ofxNetwork\src\ofxUDPManager.h">
+      <Filter>addons\ofxNetwork\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CommonCode\networking.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="icon.rc" />

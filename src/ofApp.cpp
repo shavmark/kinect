@@ -28,11 +28,11 @@ void ofApp::update(){
 //--------------------------------------------------------------
 void ofApp::draw(){
 	ofSetColor(ofColor::white);
-	if (image.isAllocated()) {
-		image.draw(0, 0);
-	}
 	if (imageir.isAllocated()) {
-		imageir.draw(ofGetWidth() / 2, 0);
+		//imageir.draw(0, 0);
+	}
+	if (image.isAllocated()) {
+		image.draw(ofGetWidth()/2, 0);
 	}
 	//faces.draw();
 	//bodies.draw();

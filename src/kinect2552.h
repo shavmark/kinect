@@ -84,7 +84,7 @@ namespace Software2552 {
 	public:
 		~Kinect2552();
 
-		bool setup(WriteComms &comms);
+		bool setup(WriteOsc &comms);
 
 		IMultiSourceFrame* frame = nullptr;
 		IMultiSourceFrameReader* reader = nullptr;   // Kinect data source
@@ -136,7 +136,7 @@ namespace Software2552 {
 		~KinectFaces();
 
 		void setup();
-		void update(WriteComms &comms, UINT64 trackingId);
+		void update(WriteOsc &comms, UINT64 trackingId);
 		void setTrackingID(int index, UINT64 trackingId); // map to body
 		vector<shared_ptr<KinectFace>> faces;
 	protected:
@@ -168,7 +168,7 @@ namespace Software2552 {
 
 		void setup();
 
-		void getAudioCorrelation(WriteComms &comms);
+		void getAudioCorrelation(WriteOsc &comms);
 		UINT64 getTrackingID() { return audioTrackingId; }
 		IAudioBeamFrameReader* getAudioBeamReader() { return pAudioBeamReader; }
 		IAudioSource* getAudioSource() { return pAudioSource; }
@@ -177,15 +177,15 @@ namespace Software2552 {
 		bool confident() { return  getConfidence() > 0.5f; }
 		float getAngle() { return angle; }
 		float getConfidence() { return confidence; }
-		void getAudioBeam(WriteComms &comms);
-		void getAudioCommands(WriteComms &comms);
+		void getAudioBeam(WriteOsc &comms);
+		void getAudioCommands(WriteOsc &comms);
 		int  getTrackingBodyIndex() { return trackingIndex; }
 		virtual void setTrackingID(int index, UINT64 trackingId);
 		HRESULT createSpeechRecognizer();
 		HRESULT startSpeechRecognition();
 
 	private:
-		void update(WriteComms &comms);
+		void update(WriteOsc &comms);
 		const UINT64 NoTrackingID = _UI64_MAX - 1;
 		const UINT64 NoTrackingIndex = -1;
 
@@ -214,7 +214,7 @@ namespace Software2552 {
 	public:
 		KinectBody(Kinect2552 *pKinect) : KinectBaseClass(pKinect) {  }
 
-		void update(ofImage& image, ofImage& imageir, WriteComms &comms);
+		void update(ofImage& image, ofImage& imageir, WriteOsc &comms);
 		void useFaces(shared_ptr<KinectFaces> facesIn)  { faces = facesIn; }
 		void useAudio(shared_ptr<KinectAudio> audioIn) { audio = audioIn; }
 

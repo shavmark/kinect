@@ -13,12 +13,15 @@
 #include <strsafe.h>
 #include <intsafe.h>
 #include <Synchapi.h>
+#include <memory>
+// keep all c+ code above main 
+#include "ofMain.h"
+
+#include "snappy.h"
 #include "ofxJSON.h"
+#include "ofxOsc.h"
 #include "networking.h"
 #include "kinect2552.h"
-#include <memory>
-
-#include "ofMain.h"
 
 class ofApp : public ofBaseApp{
 
@@ -40,7 +43,8 @@ class ofApp : public ofBaseApp{
 		void gotMessage(ofMessage msg);
 
 		Software2552::Kinect2552 kinect;
-		Software2552::WriteComms comms;
+		Software2552::WriteOsc comms;
+	
 
 		shared_ptr<Software2552::KinectBody> bodies=nullptr;
 		shared_ptr<Software2552::KinectFaces> faces = nullptr;
@@ -48,5 +52,7 @@ class ofApp : public ofBaseApp{
 
 		ofImage image;
 		ofImage imageir;
+		ofPixels pixels;
+
 
 };
