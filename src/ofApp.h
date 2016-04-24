@@ -7,6 +7,9 @@
 #include <math.h>
 #include <iostream>
 #include <memory>
+#ifndef _WINSOCK2API_
+#include <winsock2.h>
+#endif
 // Microsoft Speech Platform SDK 11
 #include <sapi.h>
 #include <sphelper.h> // SpFindBestToken()
@@ -14,7 +17,7 @@
 #include <intsafe.h>
 #include <Synchapi.h>
 #include <memory>
-#include <winsock.h>
+
 // keep all c+ code above main 
 #include "ofMain.h"
 #include "snappy.h"
