@@ -282,7 +282,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 						data["lean"]["y"] = leanAmount.Y;
 					}
 
-					comms.send(data, "kinect/body");
+					comms.update(data, "kinect/body");
 					for (int i = 0; i < JointType::JointType_Count; ++i) {
 						ofxJSONElement data;
 						data["trackingId"] = trackingId;
@@ -311,7 +311,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 						data["cam"]["z"] = position.Z;
 						string s = data.getRawString();
 						data["kinectID"] = getKinect()->getId();
-						comms.send(data, "kinect/joints");
+						comms.update(data, "kinect/joints");
 					}
 				}
 			}
@@ -376,10 +376,9 @@ bool Kinect2552::setup(WriteOsc &comms) {
 		data["height"]["color"] = 1080;
 		data["height"]["depth"] = 424;
 		data["kinectID"] = kinectID;
-		comms.send(data, "kinect/install");
+		comms.update(data, "kinect/install");
 
-
-		logTrace("Kinect signed on, life is good.");
+		ofLogNotice("Kinect") << "Kinect signed on, life is good";
 
 		return true;
 	}
@@ -409,7 +408,7 @@ void KinectFaces::setup() {
 
 void KinectFaces::setTrackingID(int index, UINT64 trackingId) { 
 	if (faces.size() < index) {
-		logErrorString("not enough faces");
+		ofLogError("KinectFaces::setTrackingID") << "not enough faces";
 		return;
 	}
 	faces[index]->getFaceSource()->put_TrackingId(trackingId);
@@ -492,7 +491,7 @@ void KinectFaces::update(WriteOsc &comms, UINT64 trackingId)
 					data["boundingBox"]["bottom"] = boundingBox.Bottom;
 
 					data["kinectID"] = getKinect()->getId();
-					comms.send(data, "kinect/face");
+					comms.update(data, "kinect/face");
 
 					SafeRelease(pFaceResult);
 					SafeRelease(pFaceFrame);

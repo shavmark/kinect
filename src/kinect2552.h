@@ -10,39 +10,9 @@
 
 namespace Software2552 {
 
-	// can be, but does not need to be, a base class as its all static and can just be called, could not even be a class I suppose
-	class Trace  {
-	public:
-		static bool checkPointer2(IUnknown *p, const string&  message, char*file = __FILE__, int line = __LINE__);
-
-		static void logError2(const string& error, char*file, int line);
-		static void logVerbose2(const string& message, char*file, int line) {
-			if (ofGetLogLevel() >= OF_LOG_VERBOSE) {
-				ofLog(OF_LOG_VERBOSE, buildString(message, file, line));
-			}
-		}
-		static void logTraceBasic(const string& message, char *name);
-		static void logTraceBasic(const string& message);
-		static void logTrace2(const string& message, char*file, int line);
-		static void logError2(HRESULT hResult, const string&  message, char*file, int line);
-		static bool CheckHresult2(HRESULT hResult, const string& message, char*file, int line);
-		static string buildString(const string& errorIn, char* file, int line);
-		static std::string wstrtostr(const std::wstring &wstr);
-
-		// get the right line number bugbug add DEBUG ONLY
-#define logError(p1, p2) Trace::logError2(p1, p2, __FILE__, __LINE__)
-#define logErrorString(p1) Trace::logError2(p1, __FILE__, __LINE__)
-#if _DEBUG
-#define logVerbose(p1) Trace::logVerbose2(p1, __FILE__, __LINE__)
-#else
-#define logVerbose(p1) 
-#endif
-#define logTrace(p1) Trace::logTrace2(p1, __FILE__, __LINE__)
-#define checkPointer(p1, p2) Trace::checkPointer2(p1, p2, __FILE__, __LINE__)
-#define checkPointer(p1, p2) Trace::checkPointer2(p1, p2, __FILE__, __LINE__)
-#define hresultFails(p1, p2) Trace::CheckHresult2(p1, p2, __FILE__, __LINE__)
-#define basicTrace(p) Trace::logTraceBasic(p, #p)
-	};
+	bool checkPointer(IUnknown *p, const string&  message, char*file = __FILE__, int line = __LINE__);
+	bool CheckHresult(HRESULT hResult, const string& message, char*file, int line);
+#define hresultFails(hResult, m) CheckHresult(hResult, m, __FILE__,__LINE__)
 
 	template<class Interface> void SafeRelease(Interface *& pInterfaceToRelease)
 	{

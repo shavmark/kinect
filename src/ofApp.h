@@ -51,7 +51,7 @@ class ofApp : public ofBaseApp{
 		shared_ptr<Software2552::KinectBody> bodies=nullptr;
 		shared_ptr<Software2552::KinectFaces> faces = nullptr;
 		shared_ptr<Software2552::KinectAudio> audio = nullptr;
-
+		Software2552::TCPServer server;
 		ofImage image;
 		ofImage imageir;
 		ofPixels pixels;

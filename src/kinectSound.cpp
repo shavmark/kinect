@@ -92,10 +92,10 @@ namespace Software2552 {
 	void KinectAudio::getAudioCommands(WriteOsc &comms) {
 		unsigned long waitObject = WaitForSingleObject(hSpeechEvent, 0);
 		if (waitObject == WAIT_TIMEOUT) {
-			logVerbose("signaled");
+			ofLogVerbose("getAudioCommands") << "signaled";
 		}
 		else if (waitObject == WAIT_OBJECT_0) {
-			logTrace("nonsignaled");
+			ofLogNotice("getAudioCommands") << "nonsignaled";
 			// Retrieved Event
 			const float confidenceThreshold = 0.3f;
 			SPEVENT eventStatus;
@@ -121,13 +121,10 @@ namespace Software2552 {
 								const SPPHRASEPROPERTY* pSemantic = pPhrase->pProperties->pFirstChild;
 								switch (pSemantic->Confidence) {
 								case SP_LOW_CONFIDENCE:
-									logTrace("SP_LOW_CONFIDENCE: " + Trace::wstrtostr(pSemantic->pszValue));
 									break;
 								case SP_NORMAL_CONFIDENCE:
-									logTrace("SP_NORMAL_CONFIDENCE: " + Trace::wstrtostr(pSemantic->pszValue));
 									break;
 								case SP_HIGH_CONFIDENCE:
-									logTrace("SP_HIGH_CONFIDENCE: " + Trace::wstrtostr(pSemantic->pszValue));
 									break;
 								}
 
@@ -136,8 +133,7 @@ namespace Software2552 {
 									data["trackingId"] = audioTrackingId;
 									data["confidence"] = pSemantic->Confidence;//if not enough hit turn down the gain bugbug
 									data["value"] = pSemantic->pszValue;
-									comms.send(data, "kinect/audioCommand");
-									logTrace("SREngineConfidence > confidenceThreshold: " + Trace::wstrtostr(pSemantic->pszValue));
+									comms.update(data, "kinect/audioCommand");
 								}
 							}
 							CoTaskMemFree(pPhrase);
@@ -146,9 +142,6 @@ namespace Software2552 {
 				}
 				pSpeechContext->GetEvents(1, &eventStatus, &eventFetch);
 			}
-		}
-		else {
-			logTrace("other");
 		}
 
 	}
@@ -299,7 +292,7 @@ namespace Software2552 {
 		}
 		if (hResult == S_FALSE) {
 			//note this but continus things will still work, not sure it matters with the new sdk
-			logVerbose("Kinect not found");
+			ofLogError("KinectAudio::findKinect") << "Kinect not found";
 		}
 		SafeRelease(pEnumTokens);
 		SafeRelease(pTokenCategory);
@@ -371,11 +364,9 @@ namespace Software2552 {
 		return hResult;
 	}
 	void  KinectAudio::setTrackingID(int index, UINT64 trackingId) {
-		logVerbose("KinectAudio::setTrackingID");
 
 		if (trackingId == audioTrackingId) {
 			trackingIndex = index;
-			logTrace("set tracking id");
 		}
 	}
 	// only call if audio matches a body via tracking Id
@@ -445,7 +436,7 @@ namespace Software2552 {
 						data[beam]["angle"] = angle;
 						data[beam]["confidence"] = confidence;
 						data[beam]["trackingId"] = audioTrackingId; // matches a body
-						comms.send(data, "kinect/audio");
+						comms.update(data, "kinect/audio");
 						SafeRelease(pAudioBeam);
 					}
 					SafeRelease(pAudioBeamFrame);
