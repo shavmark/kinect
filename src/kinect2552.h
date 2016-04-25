@@ -65,9 +65,14 @@ namespace Software2552 {
 		HRESULT color(UINT cameraPointCount, const CameraSpacePoint*csp, UINT depthPointCount, ColorSpacePoint *color) { return pCoordinateMapper->MapCameraPointsToColorSpace(1, csp, 1, color); }
 
 		const string &getId() { return kinectID; }
-		Router router;
+		// send large binary data over TCP (over 1000 byte)
+		void sendTCP(const char*buffer, size_t len, char type, int clientID = -1);
+		// send Json over UDP, fast, small
+		void sendUDP(ofxJSON &data, const string& address);
+
 	private:
-		string kinectID; 
+		Router router;
+		string kinectID;
 		IKinectSensor*     pSensor = nullptr;
 		ICoordinateMapper* pCoordinateMapper = nullptr;
 	};

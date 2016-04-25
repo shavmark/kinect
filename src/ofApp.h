@@ -20,7 +20,7 @@
 
 // keep all c+ code above main 
 #include "ofMain.h"
-#include "snappy.h"
+
 #include "ofxJSON.h"
 #include "networking.h"
 #include "kinect2552.h"

@@ -91,6 +91,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 	//const const int height = 424;
 	//const const int colorwidth = 1920;
 	//const const int colorheight = 1080;
+	//bugbug send these phase II
 	void depth2RGB(Kinect2552 *kinect, unsigned short*buffer, float*destrgb, unsigned char*rgbimage) {
 		ColorSpacePoint * depth2rgb = new ColorSpacePoint[512 * 424];     // Maps depth pixels to rgb pixels
 		if (depth2rgb) {
@@ -142,11 +143,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		unsigned char* buffer = nullptr;//bugbug where does this get deleted? when we free bodyindex?
 		HRESULT hResult = bodyindex->AccessUnderlyingBuffer(&bufferSize, &buffer);
 		if (SUCCEEDED(hResult)) {
-			string *s = new string();// deleted after message sent by sending object
-			if (s) {
-				size_t t = snappy::Compress((const char*)buffer, bufferSize, s);
-				getKinect()->router.sendBodyIndex(s);
-			}
+			getKinect()->sendTCP((const char*)buffer, bufferSize, BODYINDEX);
 		}
 		SafeRelease(bodyindex);
 	}
@@ -159,11 +156,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		UINT16 * buffer = nullptr;
 		HRESULT hResult = ir->AccessUnderlyingBuffer(&bufferSize, &buffer);
 		if (SUCCEEDED(hResult)) {
-			string *s = new string();// deleted after message sent by sending object
-			if (s) {
-				size_t t = snappy::Compress((const char*)buffer, bufferSize, s);
-				getKinect()->router.sendIR(s);
-			}
+			getKinect()->sendTCP((const char*)buffer, bufferSize, IR);
 		}
 
 		SafeRelease(ir);
@@ -205,14 +198,15 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 					if (hresultFails(hResult, "get_TrackingId")) {
 						break;
 					}
-					data["trackingId"] = trackingId;
+					data["body"]["trackingId"] = trackingId;
+					data["body"]["kinectID"] = getKinect()->getId();
 					if (audio) {
 						// see if any audio there
 						audio->getAudioCorrelation();
 						//bugbug can we use the tracking id, and is valid id, here vs creating our own?
 						if (audio->getTrackingID() == trackingId) {
 							audio->update();
-							data["talking"] = true;
+							data["body"]["talking"] = true;
 						}
 					}
 					//setTrackingID(count, trackingId); // use our own tracking id for faces
@@ -229,26 +223,22 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 						if (hresultFails(hResult, "get_HandLeftState")) {
 							break;
 						}
-						data["left"] = leftHandState;
+						data["body"]["lefthand"] = leftHandState;
 						hResult = pBody[count]->get_HandRightState(&rightHandState);
 						if (hresultFails(hResult, "get_HandRightState")) {
 							break;
 						}
-						data["right"] = rightHandState;
+						data["body"]["righthand"] = rightHandState;
 						// Lean
 						hResult = pBody[count]->get_Lean(&leanAmount);
 						if (hresultFails(hResult, "get_Lean")) {
 							break;
 						}
-						data["lean"]["x"] = leanAmount.X;
-						data["lean"]["y"] = leanAmount.Y;
+						data["body"]["lean"]["x"] = leanAmount.X;
+						data["body"]["lean"]["y"] = leanAmount.Y;
 					}
 
-					getKinect()->router.comms.update(data, "kinect/body");
 					for (int i = 0; i < JointType::JointType_Count; ++i) {
-						ofxJSONElement data;
-						data["trackingId"] = trackingId;
-
 						CameraSpacePoint position = joints[i].Position;
 						DepthSpacePoint depthSpacePoint;
 						ColorSpacePoint colorSpacePoint;
@@ -262,20 +252,19 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 						}
 						//bugbug maybe track the last one sent and then only send whats changed
 						// then the listener just keeps on data set current
-						data["jointType"] = joints[i].JointType;
-						data["trackingState"] = joints[i].TrackingState;
-						data["depth"]["x"] = depthSpacePoint.X;
-						data["depth"]["y"] = depthSpacePoint.Y;
-						data["color"]["x"] = colorSpacePoint.X;
-						data["color"]["y"] = colorSpacePoint.Y;
-						data["cam"]["x"] = position.X;
-						data["cam"]["y"] = position.Y;
-						data["cam"]["z"] = position.Z;
-						string s = data.getRawString();
-						data["kinectID"] = getKinect()->getId();
+						data["body"]["joint"][i]["jointType"] = joints[i].JointType;
+						data["body"]["joint"][i]["trackingState"] = joints[i].TrackingState;
+						data["body"]["joint"][i]["depth"]["x"] = depthSpacePoint.X;
+						data["body"]["joint"][i]["depth"]["y"] = depthSpacePoint.Y;
+						data["body"]["joint"][i]["color"]["x"] = colorSpacePoint.X;
+						data["body"]["joint"][i]["color"]["y"] = colorSpacePoint.Y;
+						data["body"]["joint"][i]["cam"]["x"] = position.X;
+						data["body"]["joint"][i]["cam"]["y"] = position.Y;
+						data["body"]["joint"][i]["cam"]["z"] = position.Z;
 						//bugbug conver these to go to Router where they become drawing json
-						getKinect()->router.comms.update(data, "kinect/joints");
 					}
+					string s = data.getRawString(false); // too large for UDP
+					getKinect()->sendTCP((const char*)s.c_str(), s.size(), BODY);
 				}
 			}
 		}
@@ -346,6 +335,20 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 
 		return true;
 	}
+	void  Kinect2552::sendTCP(const char*buffer, size_t len, char type, int clientID) {
+		if (len < 1000) {
+			ofLogError() << "data size kindof small, maybe use udp " << " " << ofToString(len);
+		}
+		string output;
+		router.send(compress((const char*)buffer, len, output), type);
+	}
+	// send Json over UDP
+	void  Kinect2552::sendUDP(ofxJSON &data, const string& address) {
+		if (data.size() > 1000) {
+			ofLogError() << "data size kindof large, maybe use TCP " << address << " " << ofToString(data.size());
+		}
+		router.comms.update(data, address);
+	}
 
 void KinectFace::cleanup()
 {
@@ -378,7 +381,7 @@ void KinectFaces::setTrackingID(int index, UINT64 trackingId) {
 	faces[index]->getFaceSource()->put_TrackingId(trackingId);
 }
 
-// return true if face found
+// 
 void KinectFaces::update(UINT64 trackingId)
 {
 	for (int count = 0; count < BODY_COUNT; count++) {
@@ -411,6 +414,7 @@ void KinectFaces::update(UINT64 trackingId)
 					ofxJSONElement data;
 
 					data["trackingId"] = id;
+					data["kinectID"] = getKinect()->getId();
 
 					hResult = pFaceResult->GetFacePointsInColorSpace(FacePointType::FacePointType_Count, facePoint);
 					if (hresultFails(hResult, "GetFacePointsInColorSpace")) {
@@ -454,8 +458,7 @@ void KinectFaces::update(UINT64 trackingId)
 					data["boundingBox"]["right"] = boundingBox.Right;
 					data["boundingBox"]["bottom"] = boundingBox.Bottom;
 
-					data["kinectID"] = getKinect()->getId();
-					getKinect()->router.comms.update(data, "kinect/face");
+					getKinect()->sendUDP(data, "kinect/face");
 
 					SafeRelease(pFaceResult);
 					SafeRelease(pFaceFrame);

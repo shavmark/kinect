@@ -133,7 +133,8 @@ namespace Software2552 {
 									data["trackingId"] = audioTrackingId;
 									data["confidence"] = pSemantic->Confidence;//if not enough hit turn down the gain bugbug
 									data["value"] = pSemantic->pszValue;
-									getKinect()->router.comms.update(data, "kinect/audioCommand");
+									data["kinectID"] = getKinect()->getId();
+									getKinect()->sendUDP(data, "kinect/audioCommand");
 								}
 							}
 							CoTaskMemFree(pPhrase);
@@ -433,10 +434,11 @@ namespace Software2552 {
 						pAudioBeam->get_BeamAngle(&angle); // radian [-0.872665f, 0.872665f]
 						pAudioBeam->get_BeamAngleConfidence(&confidence); // confidence [0.0f, 1.0f]
 						ofxJSONElement data;
-						data[beam]["angle"] = angle;
-						data[beam]["confidence"] = confidence;
-						data[beam]["trackingId"] = audioTrackingId; // matches a body
-						getKinect()->router.comms.update(data, "kinect/audio");
+						data["beam"][beam]["angle"] = angle;
+						data["beam"][beam]["confidence"] = confidence;
+						data["beam"][beam]["kinectID"] = getKinect()->getId();
+						data["beam"][beam]["trackingId"] = audioTrackingId; // matches a body
+						getKinect()->sendUDP(data, "kinect/audio");
 						SafeRelease(pAudioBeam);
 					}
 					SafeRelease(pAudioBeamFrame);
