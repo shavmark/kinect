@@ -112,7 +112,7 @@ namespace Software2552 {
 		~KinectFaces();
 
 		void setup();
-		void update(UINT64 trackingId);
+		void update(Json::Value &data, UINT64 trackingId);
 		void setTrackingID(int index, UINT64 trackingId); // map to body
 		vector<shared_ptr<KinectFace>> faces;
 	protected:

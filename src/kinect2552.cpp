@@ -229,7 +229,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 					if (faces) {
 						// will fire off face data before body data
 						setTrackingID(count, trackingId);// keep face on track with body
-						faces->update(trackingId);//bugbug need to simplfy this but see what happens for now
+						faces->update(data["body"], trackingId);//bugbug need to simplfy this but see what happens for now
 					}
 
 					// get joints
@@ -395,7 +395,7 @@ void KinectFaces::setTrackingID(int index, UINT64 trackingId) {
 }
 
 // 
-void KinectFaces::update(UINT64 trackingId)
+void KinectFaces::update(Json::Value &data, UINT64 trackingId)
 {
 	for (int count = 0; count < BODY_COUNT; count++) {
 		IFaceFrame* pFaceFrame = nullptr;
@@ -412,6 +412,9 @@ void KinectFaces::update(UINT64 trackingId)
 					if (id != trackingId) {
 						return; // not sure abou this yet
 					}
+					//bugbug not show how this loops works with the face loop for > 1 person
+					data["face"]["trackingId"] = trackingId;
+					data["face"]["kinectID"] = getKinect()->getId();
 					// check for real data first
 					Vector4 faceRotation;
 					pFaceResult->get_FaceRotationQuaternion(&faceRotation);
@@ -424,30 +427,25 @@ void KinectFaces::update(UINT64 trackingId)
 					DetectionResult faceProperty[FaceProperty::FaceProperty_Count];
 					RectI boundingBox;
 
-					ofxJSONElement data;
-
-					data["trackingId"] = id;
-					data["kinectID"] = getKinect()->getId();
-
 					hResult = pFaceResult->GetFacePointsInColorSpace(FacePointType::FacePointType_Count, facePoint);
 					if (hresultFails(hResult, "GetFacePointsInColorSpace")) {
 						return;
 					}
-					data["eye"]["left"]["x"] = facePoint[FacePointType_EyeLeft].X;
-					data["eye"]["left"]["y"] = facePoint[FacePointType_EyeLeft].Y;
-					data["eye"]["right"]["x"] = facePoint[FacePointType_EyeRight].X;
-					data["eye"]["right"]["y"] = facePoint[FacePointType_EyeRight].Y;
-					data["nose"]["x"] = facePoint[FacePointType_Nose].X;
-					data["nose"]["y"] = facePoint[FacePointType_Nose].Y;
-					data["mouth"]["left"]["x"] = facePoint[FacePointType_MouthCornerLeft].X;
-					data["mouth"]["left"]["y"] = facePoint[FacePointType_MouthCornerLeft].Y;
-					data["mouth"]["right"]["x"] = facePoint[FacePointType_MouthCornerRight].X;
-					data["mouth"]["right"]["y"] = facePoint[FacePointType_MouthCornerRight].Y;
+					data["face"]["eye"]["left"]["x"] = facePoint[FacePointType_EyeLeft].X;
+					data["face"]["eye"]["left"]["y"] = facePoint[FacePointType_EyeLeft].Y;
+					data["face"]["eye"]["right"]["x"] = facePoint[FacePointType_EyeRight].X;
+					data["face"]["eye"]["right"]["y"] = facePoint[FacePointType_EyeRight].Y;
+					data["face"]["nose"]["x"] = facePoint[FacePointType_Nose].X;
+					data["face"]["nose"]["y"] = facePoint[FacePointType_Nose].Y;
+					data["face"]["mouth"]["left"]["x"] = facePoint[FacePointType_MouthCornerLeft].X;
+					data["face"]["mouth"]["left"]["y"] = facePoint[FacePointType_MouthCornerLeft].Y;
+					data["face"]["mouth"]["right"]["x"] = facePoint[FacePointType_MouthCornerRight].X;
+					data["face"]["mouth"]["right"]["y"] = facePoint[FacePointType_MouthCornerRight].Y;
 
-					data["faceRotation"]["w"] = faceRotation.w;
-					data["faceRotation"]["x"] = faceRotation.x;
-					data["faceRotation"]["y"] = faceRotation.y;
-					data["faceRotation"]["z"] = faceRotation.z;
+					data["face"]["faceRotation"]["w"] = faceRotation.w;
+					data["face"]["faceRotation"]["x"] = faceRotation.x;
+					data["face"]["faceRotation"]["y"] = faceRotation.y;
+					data["face"]["faceRotation"]["z"] = faceRotation.z;
 
 					hResult = pFaceResult->GetFaceProperties(FaceProperty::FaceProperty_Count, faceProperty);
 					if (hresultFails(hResult, "GetFaceProperties")) {
@@ -455,23 +453,21 @@ void KinectFaces::update(UINT64 trackingId)
 					}
 #define YES_OR_MAYBE(a)(faceProperty[a] == DetectionResult_Yes || faceProperty[a] == DetectionResult_Maybe)
 #define NOT_YES(a)(faceProperty[FaceProperty_RightEyeClosed] != DetectionResult_Yes)
-					data["eye"]["right"]["closed"] = NOT_YES(FaceProperty_RightEyeClosed);
-					data["eye"]["left"]["closed"] = NOT_YES(FaceProperty_LeftEyeClosed);
-					data["mouth"]["open"] = YES_OR_MAYBE(FaceProperty_MouthOpen);
-					data["mouth"]["moved"] = YES_OR_MAYBE(FaceFrameFeatures_MouthMoved);
-					data["happy"] = YES_OR_MAYBE(FaceProperty_Happy) || faceProperty[FaceProperty_Happy] == DetectionResult_Unknown; // try hard to be happy
+					data["face"]["eye"]["right"]["closed"] = NOT_YES(FaceProperty_RightEyeClosed);
+					data["face"]["eye"]["left"]["closed"] = NOT_YES(FaceProperty_LeftEyeClosed);
+					data["face"]["mouth"]["open"] = YES_OR_MAYBE(FaceProperty_MouthOpen);
+					data["face"]["mouth"]["moved"] = YES_OR_MAYBE(FaceFrameFeatures_MouthMoved);
+					data["face"]["happy"] = YES_OR_MAYBE(FaceProperty_Happy) || faceProperty[FaceProperty_Happy] == DetectionResult_Unknown; // try hard to be happy
 
-					data["lookingAway"] = YES_OR_MAYBE(FaceFrameFeatures_LookingAway);
-					data["glasses"] = YES_OR_MAYBE(FaceFrameFeatures_Glasses);
-					data["engaged"] = YES_OR_MAYBE(FaceFrameFeatures_FaceEngagement);
+					data["face"]["lookingAway"] = YES_OR_MAYBE(FaceFrameFeatures_LookingAway);
+					data["face"]["glasses"] = YES_OR_MAYBE(FaceFrameFeatures_Glasses);
+					data["face"]["engaged"] = YES_OR_MAYBE(FaceFrameFeatures_FaceEngagement);
 					//bugbug if these are relative to current screen convert them to percents of screen (ie x/size kind of thing)
 					pFaceResult->get_FaceBoundingBoxInColorSpace(&boundingBox);
-					data["boundingBox"]["top"] = boundingBox.Top;
-					data["boundingBox"]["left"] = boundingBox.Left;
-					data["boundingBox"]["right"] = boundingBox.Right;
-					data["boundingBox"]["bottom"] = boundingBox.Bottom;
-
-					getKinect()->sendUDP(data, "kinect/face");
+					data["face"]["boundingBox"]["top"] = boundingBox.Top;
+					data["face"]["boundingBox"]["left"] = boundingBox.Left;
+					data["face"]["boundingBox"]["right"] = boundingBox.Right;
+					data["face"]["boundingBox"]["bottom"] = boundingBox.Bottom;
 
 					SafeRelease(pFaceResult);
 					SafeRelease(pFaceFrame);
