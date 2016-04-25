@@ -89,7 +89,7 @@ namespace Software2552 {
 		delete p32Buffer;
 		return hr;
 	}
-	void KinectAudio::getAudioCommands(WriteOsc &comms) {
+	void KinectAudio::getAudioCommands() {
 		unsigned long waitObject = WaitForSingleObject(hSpeechEvent, 0);
 		if (waitObject == WAIT_TIMEOUT) {
 			ofLogVerbose("getAudioCommands") << "signaled";
@@ -133,7 +133,7 @@ namespace Software2552 {
 									data["trackingId"] = audioTrackingId;
 									data["confidence"] = pSemantic->Confidence;//if not enough hit turn down the gain bugbug
 									data["value"] = pSemantic->pszValue;
-									comms.update(data, "kinect/audioCommand");
+									getKinect()->router.comms.update(data, "kinect/audioCommand");
 								}
 							}
 							CoTaskMemFree(pPhrase);
@@ -370,12 +370,12 @@ namespace Software2552 {
 		}
 	}
 	// only call if audio matches a body via tracking Id
-	void KinectAudio::update(WriteOsc &comms) {
-		getAudioBeam(comms);
-		getAudioCommands(comms);
+	void KinectAudio::update() {
+		getAudioBeam();
+		getAudioCommands();
 	}
 
-	void KinectAudio::getAudioCorrelation(WriteOsc &comms) {
+	void KinectAudio::getAudioCorrelation() {
 		correlationCount = 0;
 		trackingIndex = NoTrackingIndex;
 		audioTrackingId = NoTrackingID;
@@ -410,7 +410,7 @@ namespace Software2552 {
 	}
 
 	// AudioBeam Frame https://masteringof.wordpress.com/examples/sounds/ https://masteringof.wordpress.com/projects-based-on-book/
-	void KinectAudio::getAudioBeam(WriteOsc &comms) {
+	void KinectAudio::getAudioBeam() {
 
 		IAudioBeamFrameList* pAudioBeamList = nullptr;
 		HRESULT hResult = getAudioBeamReader()->AcquireLatestBeamFrames(&pAudioBeamList);
@@ -436,7 +436,7 @@ namespace Software2552 {
 						data[beam]["angle"] = angle;
 						data[beam]["confidence"] = confidence;
 						data[beam]["trackingId"] = audioTrackingId; // matches a body
-						comms.update(data, "kinect/audio");
+						getKinect()->router.comms.update(data, "kinect/audio");
 						SafeRelease(pAudioBeam);
 					}
 					SafeRelease(pAudioBeamFrame);

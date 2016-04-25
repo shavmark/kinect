@@ -133,47 +133,43 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		}
 
 	}
-	void KinectBody::updateImage(ofImage& image, IMultiSourceFrame* frame) {
+	void KinectBody::updateImage(IMultiSourceFrame* frame) {
 		IBodyIndexFrame * bodyindex = getBodyIndex(frame);
 		if (!bodyindex) {
 			return;
 		}
 		unsigned int bufferSize = 0;
-		unsigned char* buffer = nullptr;
-		unsigned char* output;
+		unsigned char* buffer = nullptr;//bugbug where does this get deleted? when we free bodyindex?
 		HRESULT hResult = bodyindex->AccessUnderlyingBuffer(&bufferSize, &buffer);
-		string *s=new string();// deleted after message sent
-		size_t t  = snappy::Compress((const char*)buffer, bufferSize, s);
-		getKinect()->server.sendbinary(s->c_str(), s->size());
+		if (SUCCEEDED(hResult)) {
+			string *s = new string();// deleted after message sent by sending object
+			if (s) {
+				size_t t = snappy::Compress((const char*)buffer, bufferSize, s);
+				getKinect()->router.sendBodyIndex(s);
+			}
+		}
 		SafeRelease(bodyindex);
-
 	}
-	void KinectBody::updateImageIR(ofImage& image, IMultiSourceFrame* frame) {
+	void KinectBody::updateImageIR(IMultiSourceFrame* frame) {
 		IInfraredFrame * ir = getInfrared(frame);
 		if (!ir) {
 			return;
 		}
-		int width = 512;
-		int height = 424;
 		UINT bufferSize = 0;
 		UINT16 * buffer = nullptr;
 		HRESULT hResult = ir->AccessUnderlyingBuffer(&bufferSize, &buffer);
-		int i;
 		if (SUCCEEDED(hResult)) {
-			image.allocate(width, height, OF_IMAGE_COLOR);
-			for (float y = 0; y < height; y++) {
-				for (float x = 0; x < width; x++) {
-					unsigned int index = y * width + x;
-					image.setColor(x, y, ofColor::fromHsb(255, 50, buffer[index]));
-				}
+			string *s = new string();// deleted after message sent by sending object
+			if (s) {
+				size_t t = snappy::Compress((const char*)buffer, bufferSize, s);
+				getKinect()->router.sendIR(s);
 			}
-			image.update();
 		}
 
 		SafeRelease(ir);
 
 	}
-	void KinectBody::update(ofImage& image, ofImage& imageir, WriteOsc &comms) {
+	void KinectBody::update() {
 		IMultiSourceFrame* frame = NULL;
 		HRESULT hResult;
 
@@ -185,8 +181,8 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		if (!bodyframe) {
 			return;
 		}
-		updateImage(image, frame);
-		updateImageIR(imageir, frame);
+		updateImage(frame);
+		updateImageIR(frame);
 		IBody* pBody[BODY_COUNT] = { 0 };
 
 		hResult = bodyframe->GetAndRefreshBodyData(BODY_COUNT, pBody);
@@ -212,17 +208,17 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 					data["trackingId"] = trackingId;
 					if (audio) {
 						// see if any audio there
-						audio->getAudioCorrelation(comms);
+						audio->getAudioCorrelation();
 						//bugbug can we use the tracking id, and is valid id, here vs creating our own?
 						if (audio->getTrackingID() == trackingId) {
-							audio->update(comms);
+							audio->update();
 							data["talking"] = true;
 						}
 					}
 					//setTrackingID(count, trackingId); // use our own tracking id for faces
 					if (faces) {
 						setTrackingID(count, trackingId);// keep face on track with body
-						faces->update(comms, trackingId);//bugbug need to simplfy this but see what happens for now
+						faces->update(trackingId);//bugbug need to simplfy this but see what happens for now
 					}
 
 					// get joints
@@ -248,7 +244,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 						data["lean"]["y"] = leanAmount.Y;
 					}
 
-					comms.update(data, "kinect/body");
+					getKinect()->router.comms.update(data, "kinect/body");
 					for (int i = 0; i < JointType::JointType_Count; ++i) {
 						ofxJSONElement data;
 						data["trackingId"] = trackingId;
@@ -277,7 +273,8 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 						data["cam"]["z"] = position.Z;
 						string s = data.getRawString();
 						data["kinectID"] = getKinect()->getId();
-						comms.update(data, "kinect/joints");
+						//bugbug conver these to go to Router where they become drawing json
+						getKinect()->router.comms.update(data, "kinect/joints");
 					}
 				}
 			}
@@ -289,7 +286,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		SafeRelease(frame);
 	}
 
-	bool Kinect2552::setup(WriteOsc &comms) {
+	bool Kinect2552::setup() {
 
 		HRESULT hResult = GetDefaultKinectSensor(&pSensor);
 		if (hresultFails(hResult, "GetDefaultKinectSensor")) {
@@ -343,7 +340,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		data["height"]["color"] = 1080;
 		data["height"]["depth"] = 424;
 		data["kinectID"] = kinectID;
-		comms.update(data, "kinect/install");
+		router.comms.update(data, "kinect/install");
 
 		ofLogNotice("Kinect") << "Kinect signed on, life is good";
 
@@ -382,7 +379,7 @@ void KinectFaces::setTrackingID(int index, UINT64 trackingId) {
 }
 
 // return true if face found
-void KinectFaces::update(WriteOsc &comms, UINT64 trackingId)
+void KinectFaces::update(UINT64 trackingId)
 {
 	for (int count = 0; count < BODY_COUNT; count++) {
 		IFaceFrame* pFaceFrame = nullptr;
@@ -458,7 +455,7 @@ void KinectFaces::update(WriteOsc &comms, UINT64 trackingId)
 					data["boundingBox"]["bottom"] = boundingBox.Bottom;
 
 					data["kinectID"] = getKinect()->getId();
-					comms.update(data, "kinect/face");
+					getKinect()->router.comms.update(data, "kinect/face");
 
 					SafeRelease(pFaceResult);
 					SafeRelease(pFaceFrame);

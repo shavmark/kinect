@@ -1,5 +1,6 @@
 
 #include <inc\Kinect.Face.h>
+#include "control.h"
 
 //https://github.com/Vangos, http://www.cs.princeton.edu/~edwardz/tutorials/kinect2/kinect0_sdl.html, https://github.com/UnaNancyOwen
 //http://www.pointclouds.org/
@@ -47,12 +48,11 @@ namespace Software2552 {
 		bool                    m_SpeechActive;
 	};
 
-	
 	class Kinect2552  {
 	public:
 		~Kinect2552();
 
-		bool setup(WriteOsc &comms);
+		bool setup();
 
 		IMultiSourceFrame* frame = nullptr;
 		IMultiSourceFrameReader* reader = nullptr;   // Kinect data source
@@ -65,6 +65,7 @@ namespace Software2552 {
 		HRESULT color(UINT cameraPointCount, const CameraSpacePoint*csp, UINT depthPointCount, ColorSpacePoint *color) { return pCoordinateMapper->MapCameraPointsToColorSpace(1, csp, 1, color); }
 
 		const string &getId() { return kinectID; }
+		Router router;
 	private:
 		string kinectID; 
 		IKinectSensor*     pSensor = nullptr;
@@ -103,7 +104,7 @@ namespace Software2552 {
 		~KinectFaces();
 
 		void setup();
-		void update(WriteOsc &comms, UINT64 trackingId);
+		void update(UINT64 trackingId);
 		void setTrackingID(int index, UINT64 trackingId); // map to body
 		vector<shared_ptr<KinectFace>> faces;
 	protected:
@@ -135,7 +136,7 @@ namespace Software2552 {
 
 		void setup();
 
-		void getAudioCorrelation(WriteOsc &comms);
+		void getAudioCorrelation();
 		UINT64 getTrackingID() { return audioTrackingId; }
 		IAudioBeamFrameReader* getAudioBeamReader() { return pAudioBeamReader; }
 		IAudioSource* getAudioSource() { return pAudioSource; }
@@ -144,15 +145,15 @@ namespace Software2552 {
 		bool confident() { return  getConfidence() > 0.5f; }
 		float getAngle() { return angle; }
 		float getConfidence() { return confidence; }
-		void getAudioBeam(WriteOsc &comms);
-		void getAudioCommands(WriteOsc &comms);
+		void getAudioBeam();
+		void getAudioCommands();
 		int  getTrackingBodyIndex() { return trackingIndex; }
 		virtual void setTrackingID(int index, UINT64 trackingId);
 		HRESULT createSpeechRecognizer();
 		HRESULT startSpeechRecognition();
 
 	private:
-		void update(WriteOsc &comms);
+		void update();
 		const UINT64 NoTrackingID = _UI64_MAX - 1;
 		const UINT64 NoTrackingIndex = -1;
 
@@ -181,13 +182,13 @@ namespace Software2552 {
 	public:
 		KinectBody(Kinect2552 *pKinect) : KinectBaseClass(pKinect) {  }
 
-		void update(ofImage& image, ofImage& imageir, WriteOsc &comms);
+		void update();
 		void useFaces(shared_ptr<KinectFaces> facesIn)  { faces = facesIn; }
 		void useAudio(shared_ptr<KinectAudio> audioIn) { audio = audioIn; }
 
 	private:
-		void updateImage(ofImage& image, IMultiSourceFrame* frame);
-		void updateImageIR(ofImage& image, IMultiSourceFrame* frame);
+		void updateImage(IMultiSourceFrame* frame);
+		void updateImageIR(IMultiSourceFrame* frame);
 		// audio id tracks to sound bugbug how does faces do it?
 		void setTrackingID(int index, UINT64 trackingId);
 		shared_ptr<KinectAudio> audio = nullptr;

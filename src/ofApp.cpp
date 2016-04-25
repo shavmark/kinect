@@ -2,8 +2,7 @@
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-	comms.setup();
-	kinect.setup(comms);
+	kinect.setup();
 	bodies = std::make_shared<Software2552::KinectBody>(&kinect);
 	faces = std::make_shared<Software2552::KinectFaces>(&kinect);
 	audio = std::make_shared<Software2552::KinectAudio>(&kinect);
@@ -20,8 +19,7 @@ void ofApp::setup(){
 //--------------------------------------------------------------
 void ofApp::update(){
 	if (bodies) {
-		bodies->update(image, imageir, comms);
-		bodies->u(image);
+		bodies->update();
 	}
 }
 
