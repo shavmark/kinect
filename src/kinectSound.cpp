@@ -371,8 +371,8 @@ namespace Software2552 {
 		}
 	}
 	// only call if audio matches a body via tracking Id
-	void KinectAudio::update() {
-		getAudioBeam();
+	void KinectAudio::update(Json::Value &data, UINT64 trackingId) {
+		getAudioBeam(data, trackingId);
 		getAudioCommands();
 	}
 
@@ -390,13 +390,13 @@ namespace Software2552 {
 			if (!hresultFails(hResult, "OpenAudioBeamFrame")) {
 				IAudioBeamSubFrame* pAudioBeamSubFrame = nullptr;
 				hResult = pAudioBeamFrame->GetSubFrame(0, &pAudioBeamSubFrame);
-				if (!hresultFails(hResult, "GetSubFrame")) {
+				if (SUCCEEDED(hResult)) {
 					hResult = pAudioBeamSubFrame->get_AudioBodyCorrelationCount(&correlationCount);
 					if (SUCCEEDED(hResult) && (correlationCount != 0)) {
 						IAudioBodyCorrelation* pAudioBodyCorrelation = nullptr;
 						hResult = pAudioBeamSubFrame->GetAudioBodyCorrelation(0, &pAudioBodyCorrelation);
 
-						if (!hresultFails(hResult, "GetAudioBodyCorrelation")) {
+						if (SUCCEEDED(hResult)) {
 							pAudioBodyCorrelation->get_BodyTrackingId(&audioTrackingId);
 							SafeRelease(pAudioBodyCorrelation);
 						}
@@ -411,7 +411,7 @@ namespace Software2552 {
 	}
 
 	// AudioBeam Frame https://masteringof.wordpress.com/examples/sounds/ https://masteringof.wordpress.com/projects-based-on-book/
-	void KinectAudio::getAudioBeam() {
+	void KinectAudio::getAudioBeam(Json::Value &data, UINT64 trackingId) {
 
 		IAudioBeamFrameList* pAudioBeamList = nullptr;
 		HRESULT hResult = getAudioBeamReader()->AcquireLatestBeamFrames(&pAudioBeamList);
@@ -438,7 +438,6 @@ namespace Software2552 {
 						data["beam"][beam]["confidence"] = confidence;
 						data["beam"][beam]["kinectID"] = getKinect()->getId();
 						data["beam"][beam]["trackingId"] = audioTrackingId; // matches a body
-						getKinect()->sendUDP(data, "kinect/audio");
 						SafeRelease(pAudioBeam);
 					}
 					SafeRelease(pAudioBeamFrame);

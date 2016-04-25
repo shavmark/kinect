@@ -178,6 +178,9 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		case HandState_Lasso:
 			data["state"] = "lasso";
 			break;
+		case HandState_Unknown:
+			data["state"] = "unknown";
+			break;
 		}
 
 	}
@@ -222,8 +225,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 						audio->getAudioCorrelation();
 						//bugbug can we use the tracking id, and is valid id, here vs creating our own?
 						if (audio->getTrackingID() == trackingId) {
-							audio->update();
-							data["body"]["talking"] = true;
+							audio->update(data["body"], trackingId);
 						}
 					}
 					if (faces) {
@@ -234,50 +236,48 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 
 					// get joints
 					hResult = pBody[count]->GetJoints(JointType::JointType_Count, joints);
-					if (hresultFails(hResult, "GetJoints")) {
-						continue;
-					}
-					pBody[count]->get_Lean(&leanAmount);
-					data["body"]["lean"]["x"] = leanAmount.X;
-					data["body"]["lean"]["y"] = leanAmount.Y;
-					
-					for (int i = 0; i < JointType::JointType_Count; ++i) {
-						data["body"]["joint"][i]["trackingState"] = joints[i].TrackingState;
-						if (joints[i].TrackingState == TrackingState::TrackingState_NotTracked) {
-							continue;
-						}
-						// double check numbers
-						DepthSpacePoint depthSpacePoint;
-						getPoint(joints[i].Position, depthSpacePoint);
-						if ((depthSpacePoint.X >= 0) && (depthSpacePoint.X < getKinect()->getFrameWidth()) && (depthSpacePoint.Y >= 0) && (depthSpacePoint.Y < getKinect()->getFrameHeight())) {
-							TrackingConfidence confidence;
-							HandState state;
-							data["body"]["joint"][i]["jointType"] = joints[i].JointType;
-							data["body"]["joint"][i]["depth"]["x"] = depthSpacePoint.X; // in x,y per kinect device size
-							data["body"]["joint"][i]["depth"]["y"] = depthSpacePoint.Y;
-							data["body"]["joint"][i]["cam"]["x"] = joints[i].Position.X; // in meters
-							data["body"]["joint"][i]["cam"]["y"] = joints[i].Position.Y;
-							data["body"]["joint"][i]["cam"]["z"] = joints[i].Position.Z;
+					if (SUCCEEDED(hResult)) {
+						pBody[count]->get_Lean(&leanAmount);
+						data["body"]["lean"]["x"] = leanAmount.X;
+						data["body"]["lean"]["y"] = leanAmount.Y;
 
-							if (joints[i].JointType == JointType::JointType_HandRight) {
-								pBody[count]->get_HandRightConfidence(&confidence); // send this so we do not have to decide
-								pBody[count]->get_HandRightState(&state);
-								setHand(data["body"][i]["right"], confidence, state);
-							}
-							else if (joints[i].JointType == JointType::JointType_HandLeft) {
-								pBody[count]->get_HandLeftConfidence(&confidence); // send this so we do not have to decide
-								pBody[count]->get_HandLeftState(&state);
-								setHand(data["body"][i]["left"], confidence, state);
-							}
-							else {
-								// just the joint gets drawn, its name other than JointType_Head (hand above head)
-								// is not super key as we track face/hands separatly 
+						for (int i = 0; i < JointType::JointType_Count; ++i) {
+							data["body"]["joint"][i]["trackingState"] = joints[i].TrackingState;
+							if (joints[i].TrackingState != TrackingState::TrackingState_NotTracked) {
+								// double check numbers
+								DepthSpacePoint depthSpacePoint;
+								getPoint(joints[i].Position, depthSpacePoint);
+								if ((depthSpacePoint.X >= 0) && (depthSpacePoint.X < getKinect()->getFrameWidth()) && (depthSpacePoint.Y >= 0) && (depthSpacePoint.Y < getKinect()->getFrameHeight())) {
+									TrackingConfidence confidence;
+									HandState state;
+									data["body"]["joint"][i]["jointType"] = joints[i].JointType;
+									data["body"]["joint"][i]["depth"]["x"] = depthSpacePoint.X; // in x,y per kinect device size
+									data["body"]["joint"][i]["depth"]["y"] = depthSpacePoint.Y;
+									data["body"]["joint"][i]["cam"]["x"] = joints[i].Position.X; // in meters
+									data["body"]["joint"][i]["cam"]["y"] = joints[i].Position.Y;
+									data["body"]["joint"][i]["cam"]["z"] = joints[i].Position.Z;
+
+									if (joints[i].JointType == JointType::JointType_HandRight) {
+										pBody[count]->get_HandRightConfidence(&confidence); // send this so we do not have to decide
+										pBody[count]->get_HandRightState(&state);
+										setHand(data["body"]["joint"][i]["right"], confidence, state);
+									}
+									else if (joints[i].JointType == JointType::JointType_HandLeft) {
+										pBody[count]->get_HandLeftConfidence(&confidence); // send this so we do not have to decide
+										pBody[count]->get_HandLeftState(&state);
+										string s = data.getRawString(false);
+										setHand(data["body"]["joint"][i]["left"], confidence, state);
+									}
+									else {
+										// just the joint gets drawn, its name other than JointType_Head (hand above head)
+										// is not super key as we track face/hands separatly 
+									}
+								}
 							}
 						}
-
+						string s = data.getRawString(false); // too large for UDP
+						getKinect()->sendTCP((const char*)s.c_str(), s.size(), BODY);
 					}
-					string s = data.getRawString(false); // too large for UDP
-					getKinect()->sendTCP((const char*)s.c_str(), s.size(), BODY);
 				}
 			}
 		}
@@ -288,7 +288,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		SafeRelease(frame);
 	}
 
-	bool Kinect2552::setup() {
+	bool Kinect2552::setup(shared_ptr<Router>p) {
 
 		HRESULT hResult = GetDefaultKinectSensor(&pSensor);
 		if (hresultFails(hResult, "GetDefaultKinectSensor")) {
@@ -336,31 +336,40 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		for (size_t i = 0; i < id[0] != 0; ++i) {
 			kinectID += id[i];
 		}
-		ofxJSONElement data;
-		data["width"]["color"] = 1920;
-		data["width"]["depth"] = 512;
-		data["height"]["color"] = 1080;
-		data["height"]["depth"] = 424;
-		data["kinectID"] = kinectID;
-		router.comms.update(data, "kinect/install");
+
+		router = p;
+		if (router) {
+			ofxJSONElement data;
+			data["width"]["color"] = 1920;
+			data["width"]["depth"] = 512;
+			data["height"]["color"] = 1080;
+			data["height"]["depth"] = 424;
+			data["kinectID"] = kinectID;
+			router->comms.update(data, "kinect/install");
+		}
 
 		ofLogNotice("Kinect") << "Kinect signed on, life is good";
 
 		return true;
 	}
-	void  Kinect2552::sendTCP(const char*buffer, size_t len, char type, int clientID) {
-		if (len < 1000) {
-			ofLogError() << "data size kindof small, maybe use udp " << " " << ofToString(len);
+	// send fast as Kinect is waiting
+	void  Kinect2552::sendTCP(const char * bytes, const int numBytes, char type, int clientID) {
+		if (router && numBytes > 0) {
+			if (numBytes < 1000) {
+				ofLogError() << "data size kindof small, maybe use udp " << " " << ofToString(numBytes);
+			}
+			router->send(bytes, numBytes, type, clientID);
+
 		}
-		string output;
-		router.send(compress((const char*)buffer, len, output), type);
 	}
 	// send Json over UDP
 	void  Kinect2552::sendUDP(ofxJSON &data, const string& address) {
-		if (data.size() > 1000) {
-			ofLogError() << "data size kindof large, maybe use TCP " << address << " " << ofToString(data.size());
+		if (router) {
+			if (data.size() > 1000) {
+				ofLogError() << "data size kindof large, maybe use TCP " << address << " " << ofToString(data.size());
+			}
+			router->comms.update(data, address);
 		}
-		router.comms.update(data, address);
 	}
 
 void KinectFace::cleanup()

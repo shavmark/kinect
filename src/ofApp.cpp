@@ -2,7 +2,16 @@
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-	kinect.setup();
+	reader.setup();
+
+	shared_ptr<Software2552::Router>router = std::make_shared<Software2552::Router>();
+	if (!router) {
+		return; //things would be really messed up...
+	}
+	router->setup();
+	
+	kinect.setup(router);
+
 	bodies = std::make_shared<Software2552::KinectBody>(&kinect);
 	faces = std::make_shared<Software2552::KinectFaces>(&kinect);
 	audio = std::make_shared<Software2552::KinectAudio>(&kinect);
@@ -21,6 +30,10 @@ void ofApp::update(){
 	if (bodies) {
 		bodies->update();
 	}
+	if (router) {
+		router->update();
+	}
+	reader.update();
 }
 
 //--------------------------------------------------------------
@@ -30,7 +43,7 @@ void ofApp::draw(){
 		//imageir.draw(0, 0);
 	}
 	if (image.isAllocated()) {
-		image.draw(ofGetWidth()/2, 0);
+		//image.draw(ofGetWidth()/2, 0);
 	}
 	//faces.draw();
 	//bodies.draw();

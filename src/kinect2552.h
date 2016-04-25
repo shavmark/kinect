@@ -52,7 +52,7 @@ namespace Software2552 {
 	public:
 		~Kinect2552();
 
-		bool setup();
+		bool setup(shared_ptr<Router>p=nullptr);
 
 		IMultiSourceFrame* frame = nullptr;
 		IMultiSourceFrameReader* reader = nullptr;   // Kinect data source
@@ -69,12 +69,12 @@ namespace Software2552 {
 
 		const string &getId() { return kinectID; }
 		// send large binary data over TCP (over 1000 byte)
-		void sendTCP(const char*buffer, size_t len, char type, int clientID = -1);
+		void sendTCP(const char * bytes, const int numBytes, char type, int clientID = -1);
 		// send Json over UDP, fast, small
 		void sendUDP(ofxJSON &data, const string& address);
 
 	private:
-		Router router;
+		shared_ptr<Router> router = nullptr; // optional
 		string kinectID;
 		IKinectSensor*     pSensor = nullptr;
 		ICoordinateMapper* pCoordinateMapper = nullptr;
@@ -153,7 +153,7 @@ namespace Software2552 {
 		bool confident() { return  getConfidence() > 0.5f; }
 		float getAngle() { return angle; }
 		float getConfidence() { return confidence; }
-		void getAudioBeam();
+		void getAudioBeam(Json::Value &data, UINT64 trackingId);
 		void getAudioCommands();
 		int  getTrackingBodyIndex() { return trackingIndex; }
 		virtual void setTrackingID(int index, UINT64 trackingId);
@@ -161,7 +161,7 @@ namespace Software2552 {
 		HRESULT startSpeechRecognition();
 
 	private:
-		void update();
+		void update(Json::Value &data, UINT64 trackingId);
 		const UINT64 NoTrackingID = _UI64_MAX - 1;
 		const UINT64 NoTrackingIndex = -1;
 
