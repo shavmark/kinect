@@ -1,7 +1,5 @@
 
-
-//bugbug fix path in debug and release mode
-#include <C:\Program Files\Microsoft SDKs\Kinect\v2.0_1409\inc\Kinect.Face.h>
+#include <inc\Kinect.Face.h>
 
 //https://github.com/Vangos, http://www.cs.princeton.edu/~edwardz/tutorials/kinect2/kinect0_sdl.html, https://github.com/UnaNancyOwen
 //http://www.pointclouds.org/
@@ -67,7 +65,6 @@ namespace Software2552 {
 		HRESULT color(UINT cameraPointCount, const CameraSpacePoint*csp, UINT depthPointCount, ColorSpacePoint *color) { return pCoordinateMapper->MapCameraPointsToColorSpace(1, csp, 1, color); }
 
 		const string &getId() { return kinectID; }
-
 	private:
 		string kinectID; 
 		IKinectSensor*     pSensor = nullptr;

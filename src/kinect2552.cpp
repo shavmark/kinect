@@ -133,52 +133,18 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		}
 
 	}
-	
 	void KinectBody::updateImage(ofImage& image, IMultiSourceFrame* frame) {
 		IBodyIndexFrame * bodyindex = getBodyIndex(frame);
 		if (!bodyindex) {
 			return;
 		}
-		int width = 512;
-		int height = 424;
 		unsigned int bufferSize = 0;
 		unsigned char* buffer = nullptr;
 		unsigned char* output;
 		HRESULT hResult = bodyindex->AccessUnderlyingBuffer(&bufferSize, &buffer);
-		string s1 = "hello";
-		string s2;
-		string s3;
-		const char*bff =(const char*)buffer;
-		size_t t  = snappy::Compress(bff, bufferSize, &s2);
-		ofBuffer bufferobject;
-		bool b = snappy::Uncompress(s2.c_str(), s2.size(), &s3);
-		
-		unsigned char*b2 = (unsigned char*)s3.c_str();
-		if (SUCCEEDED(hResult)) {
-			image.allocate(width, height, OF_IMAGE_COLOR);
-			bool found = false;
-			for (float y = 0; y < height; y++) {
-				for (float x = 0; x < width; x++) {
-					unsigned int index = y * width + x;
-					if (b2[index] != 0xff) {
-						float hue = x / width * 255;
-						float sat = ofMap(y, 0, height / 2, 0, 255, true);
-						float bri = ofMap(y, height / 2, height, 255, 0, true);
-						// make a dynamic image, also there can be up to 6 images so we need them to be a little different 
-						image.setColor(x, y, ofColor::fromHsb(hue, sat, bri));
-						found = true;
-					}
-					else {
-						image.setColor(x, y, ofColor::white);
-					}
-				}
-			}
-			if (!found) {
-				image.clear();
-			}
-			image.update();
-		}
-
+		string *s=new string();// deleted after message sent
+		size_t t  = snappy::Compress((const char*)buffer, bufferSize, s);
+		getKinect()->server.sendbinary(s->c_str(), s->size());
 		SafeRelease(bodyindex);
 
 	}
@@ -321,9 +287,10 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		}
 		SafeRelease(bodyframe);
 		SafeRelease(frame);
-}
+	}
 
-bool Kinect2552::setup(WriteOsc &comms) {
+	bool Kinect2552::setup(WriteOsc &comms) {
+
 		HRESULT hResult = GetDefaultKinectSensor(&pSensor);
 		if (hresultFails(hResult, "GetDefaultKinectSensor")) {
 			return false;
