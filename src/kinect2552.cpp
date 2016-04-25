@@ -207,15 +207,13 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 				if (SUCCEEDED(hResult) && bTracked) {
 					ofxJSONElement data;
 					Joint joints[JointType::JointType_Count];
-					HandState leftHandState = HandState::HandState_Unknown;
-					HandState rightHandState = HandState::HandState_Unknown;
 					PointF leanAmount;
 
 					// Set TrackingID to Detect Face
 					UINT64 trackingId = _UI64_MAX;
 					hResult = pBody[count]->get_TrackingId(&trackingId);
 					if (hresultFails(hResult, "get_TrackingId")) {
-						break;
+						continue;
 					}
 					data["body"]["trackingId"] = trackingId;
 					data["body"]["kinectID"] = getKinect()->getId();
@@ -237,7 +235,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 					// get joints
 					hResult = pBody[count]->GetJoints(JointType::JointType_Count, joints);
 					if (hresultFails(hResult, "GetJoints")) {
-						return;
+						continue;
 					}
 					pBody[count]->get_Lean(&leanAmount);
 					data["body"]["lean"]["x"] = leanAmount.X;
