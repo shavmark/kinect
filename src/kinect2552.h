@@ -61,6 +61,9 @@ namespace Software2552 {
 		IKinectSensor* getSensor() {return pSensor;	}
 		ICoordinateMapper* getMapper() {	return pCoordinateMapper;	}
 
+		int getFrameWidth() { return 512; }
+		int getFrameHeight() { return 424; }
+
 		HRESULT depth(UINT cameraPointCount, CameraSpacePoint*csp, UINT depthPointCount, DepthSpacePoint *dsp) { return pCoordinateMapper->MapCameraPointsToDepthSpace(1, csp, 1, dsp); }
 		HRESULT color(UINT cameraPointCount, const CameraSpacePoint*csp, UINT depthPointCount, ColorSpacePoint *color) { return pCoordinateMapper->MapCameraPointsToColorSpace(1, csp, 1, color); }
 
@@ -194,6 +197,8 @@ namespace Software2552 {
 	private:
 		void updateImage(IMultiSourceFrame* frame);
 		void updateImageIR(IMultiSourceFrame* frame);
+		bool getPoint(CameraSpacePoint& position, DepthSpacePoint& depthSpacePoint);
+		void setHand(Json::Value &data, const TrackingConfidence& confidence, const HandState& state);
 		// audio id tracks to sound bugbug how does faces do it?
 		void setTrackingID(int index, UINT64 trackingId);
 		shared_ptr<KinectAudio> audio = nullptr;

@@ -87,8 +87,6 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		SafeRelease(pSensor);
 		SafeRelease(pCoordinateMapper);
 	}
-	//const int width = 512;
-	//const const int height = 424;
 	//const const int colorwidth = 1920;
 	//const const int colorheight = 1080;
 	//bugbug send these phase II
@@ -162,6 +160,27 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		SafeRelease(ir);
 
 	}
+	bool KinectBody::getPoint(CameraSpacePoint& position, DepthSpacePoint& depthSpacePoint) {
+		HRESULT hResult = getKinect()->depth(1, &position, 1, &depthSpacePoint);
+		return !hresultFails(hResult, "depth");
+	}
+	void KinectBody::setHand(Json::Value &data, const TrackingConfidence& confidence, const HandState& state) {
+
+		data["highConfidence"] = confidence == TrackingConfidence::TrackingConfidence_High;
+
+		switch (state) {
+		case HandState_Open:
+			data["state"] = "open";
+			break;
+		case HandState_Closed:
+			data["state"] = "closed";
+			break;
+		case HandState_Lasso:
+			data["state"] = "lasso";
+			break;
+		}
+
+	}
 	void KinectBody::update() {
 		IMultiSourceFrame* frame = NULL;
 		HRESULT hResult;
@@ -209,59 +228,55 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 							data["body"]["talking"] = true;
 						}
 					}
-					//setTrackingID(count, trackingId); // use our own tracking id for faces
 					if (faces) {
+						// will fire off face data before body data
 						setTrackingID(count, trackingId);// keep face on track with body
 						faces->update(trackingId);//bugbug need to simplfy this but see what happens for now
 					}
 
 					// get joints
 					hResult = pBody[count]->GetJoints(JointType::JointType_Count, joints);
-					if (!hresultFails(hResult, "GetJoints")) {
-						// Left Hand State
-						hResult = pBody[count]->get_HandLeftState(&leftHandState);
-						if (hresultFails(hResult, "get_HandLeftState")) {
-							break;
-						}
-						data["body"]["lefthand"] = leftHandState;
-						hResult = pBody[count]->get_HandRightState(&rightHandState);
-						if (hresultFails(hResult, "get_HandRightState")) {
-							break;
-						}
-						data["body"]["righthand"] = rightHandState;
-						// Lean
-						hResult = pBody[count]->get_Lean(&leanAmount);
-						if (hresultFails(hResult, "get_Lean")) {
-							break;
-						}
-						data["body"]["lean"]["x"] = leanAmount.X;
-						data["body"]["lean"]["y"] = leanAmount.Y;
+					if (hresultFails(hResult, "GetJoints")) {
+						return;
 					}
-
+					pBody[count]->get_Lean(&leanAmount);
+					data["body"]["lean"]["x"] = leanAmount.X;
+					data["body"]["lean"]["y"] = leanAmount.Y;
+					
 					for (int i = 0; i < JointType::JointType_Count; ++i) {
-						CameraSpacePoint position = joints[i].Position;
-						DepthSpacePoint depthSpacePoint;
-						ColorSpacePoint colorSpacePoint;
-						HRESULT hResult = getKinect()->depth(1, &position, 1, &depthSpacePoint);
-						if (hresultFails(hResult, "depth")) {
-							break;
-						}
-						hResult = getKinect()->color(1, &position, 1, &colorSpacePoint);
-						if (hresultFails(hResult, "color")) {
-							break;
-						}
-						//bugbug maybe track the last one sent and then only send whats changed
-						// then the listener just keeps on data set current
-						data["body"]["joint"][i]["jointType"] = joints[i].JointType;
 						data["body"]["joint"][i]["trackingState"] = joints[i].TrackingState;
-						data["body"]["joint"][i]["depth"]["x"] = depthSpacePoint.X;
-						data["body"]["joint"][i]["depth"]["y"] = depthSpacePoint.Y;
-						data["body"]["joint"][i]["color"]["x"] = colorSpacePoint.X;
-						data["body"]["joint"][i]["color"]["y"] = colorSpacePoint.Y;
-						data["body"]["joint"][i]["cam"]["x"] = position.X;
-						data["body"]["joint"][i]["cam"]["y"] = position.Y;
-						data["body"]["joint"][i]["cam"]["z"] = position.Z;
-						//bugbug conver these to go to Router where they become drawing json
+						if (joints[i].TrackingState == TrackingState::TrackingState_NotTracked) {
+							continue;
+						}
+						// double check numbers
+						DepthSpacePoint depthSpacePoint;
+						getPoint(joints[i].Position, depthSpacePoint);
+						if ((depthSpacePoint.X >= 0) && (depthSpacePoint.X < getKinect()->getFrameWidth()) && (depthSpacePoint.Y >= 0) && (depthSpacePoint.Y < getKinect()->getFrameHeight())) {
+							TrackingConfidence confidence;
+							HandState state;
+							data["body"]["joint"][i]["jointType"] = joints[i].JointType;
+							data["body"]["joint"][i]["depth"]["x"] = depthSpacePoint.X; // in x,y per kinect device size
+							data["body"]["joint"][i]["depth"]["y"] = depthSpacePoint.Y;
+							data["body"]["joint"][i]["cam"]["x"] = joints[i].Position.X; // in meters
+							data["body"]["joint"][i]["cam"]["y"] = joints[i].Position.Y;
+							data["body"]["joint"][i]["cam"]["z"] = joints[i].Position.Z;
+
+							if (joints[i].JointType == JointType::JointType_HandRight) {
+								pBody[count]->get_HandRightConfidence(&confidence); // send this so we do not have to decide
+								pBody[count]->get_HandRightState(&state);
+								setHand(data["body"][i]["right"], confidence, state);
+							}
+							else if (joints[i].JointType == JointType::JointType_HandLeft) {
+								pBody[count]->get_HandLeftConfidence(&confidence); // send this so we do not have to decide
+								pBody[count]->get_HandLeftState(&state);
+								setHand(data["body"][i]["left"], confidence, state);
+							}
+							else {
+								// just the joint gets drawn, its name other than JointType_Head (hand above head)
+								// is not super key as we track face/hands separatly 
+							}
+						}
+
 					}
 					string s = data.getRawString(false); // too large for UDP
 					getKinect()->sendTCP((const char*)s.c_str(), s.size(), BODY);
