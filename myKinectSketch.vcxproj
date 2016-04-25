@@ -101,8 +101,8 @@ C:\Users\mark\Documents\of_v0.9.3_vs_release\addons\ofxNetwork\src</AdditionalIn
     <ClCompile Include="..\..\..\addons\ofxSnappy\libs\snappy\src\snappy-sinksource.cc" />
     <ClCompile Include="..\..\..\addons\ofxSnappy\libs\snappy\src\snappy-stubs-internal.cc" />
     <ClCompile Include="..\..\..\addons\ofxSnappy\libs\snappy\src\snappy.cc" />
+    <ClCompile Include="..\CommonCode\control.cpp" />
     <ClCompile Include="..\CommonCode\networking.cpp" />
-    <ClCompile Include="src\control.cpp" />
     <ClCompile Include="src\kinect2552.cpp" />
     <ClCompile Include="src\kinectSound.cpp" />
     <ClCompile Include="src\kinectUtils.cpp" />
@@ -135,8 +135,8 @@ C:\Users\mark\Documents\of_v0.9.3_vs_release\addons\ofxNetwork\src</AdditionalIn
     <ClInclude Include="..\..\..\addons\ofxSnappy\libs\snappy\src\snappy-stubs-internal.h" />
     <ClInclude Include="..\..\..\addons\ofxSnappy\libs\snappy\src\snappy-stubs-public.h" />
     <ClInclude Include="..\..\..\addons\ofxSnappy\libs\snappy\src\snappy.h" />
+    <ClInclude Include="..\CommonCode\control.h" />
     <ClInclude Include="..\CommonCode\networking.h" />
-    <ClInclude Include="src\control.h" />
     <ClInclude Include="src\kinect2552.h" />
     <ClInclude Include="src\ofApp.h" />
     <ClInclude Include="..\..\..\addons\ofxJson\src\ofxJSON.h" />

@@ -80,9 +80,7 @@
       <Filter>addons\ofxNetwork\src</Filter>
     </ClCompile>
     <ClCompile Include="..\CommonCode\networking.cpp" />
-    <ClCompile Include="src\control.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
+    <ClCompile Include="..\CommonCode\control.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="src">
@@ -268,9 +266,7 @@
       <Filter>addons\ofxNetwork\src</Filter>
     </ClInclude>
     <ClInclude Include="..\CommonCode\networking.h" />
-    <ClInclude Include="src\control.h">
-      <Filter>src</Filter>
-    </ClInclude>
+    <ClInclude Include="..\CommonCode\control.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="icon.rc" />
