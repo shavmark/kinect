@@ -17,7 +17,7 @@
 #include <intsafe.h>
 #include <Synchapi.h>
 #include <memory>
-
+#include <cstdlib>
 // keep all c+ code above main 
 #include "ofMain.h"
 
