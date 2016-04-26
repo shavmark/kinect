@@ -52,7 +52,6 @@ class ofApp : public ofBaseApp{
 		shared_ptr<Software2552::KinectFaces> faces = nullptr;
 		shared_ptr<Software2552::KinectAudio> audio = nullptr;
 		shared_ptr<Software2552::Router>router;
-		Software2552::TCPReader reader;
 		ofImage image;
 		ofImage imageir;
 		ofPixels pixels;

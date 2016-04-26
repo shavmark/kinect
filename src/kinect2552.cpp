@@ -146,6 +146,13 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		SafeRelease(bodyindex);
 	}
 	void KinectBody::updateImageIR(IMultiSourceFrame* frame) {
+		char *buf = new char[200000];
+		for (int i = 0; i < 200000; ++i) {
+			buf[i] = (char)i;
+		}
+		getKinect()->sendTCP(buf, 200000, IR);
+		delete buf;
+		return;
 		IInfraredFrame * ir = getInfrared(frame);
 		if (!ir) {
 			return;
@@ -194,8 +201,13 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		}
 		IBodyFrame* bodyframe = getBody(frame);
 		if (!bodyframe) {
+			SafeRelease(frame);
 			return;
 		}
+		updateImageIR(frame);
+		SafeRelease(bodyframe);
+		SafeRelease(frame);
+		return;
 		updateImage(frame);
 		updateImageIR(frame);
 		IBody* pBody[BODY_COUNT] = { 0 };

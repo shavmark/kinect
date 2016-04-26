@@ -2,7 +2,6 @@
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-	reader.setup();
 
 	shared_ptr<Software2552::Router>router = std::make_shared<Software2552::Router>();
 	if (!router) {
@@ -30,10 +29,6 @@ void ofApp::update(){
 	if (bodies) {
 		bodies->update();
 	}
-	if (router) {
-		router->update();
-	}
-	reader.update();
 }
 
 //--------------------------------------------------------------
