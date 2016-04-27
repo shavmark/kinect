@@ -53,8 +53,12 @@ namespace Software2552 {
 		~Kinect2552();
 
 		bool setup(shared_ptr<Router>p=nullptr);
+
+		// ready to draw
 		ofImage imagebi;
 		ofImage imageir;
+		Kinect kinect; 
+
 		IMultiSourceFrame* frame = nullptr;
 		IMultiSourceFrameReader* reader = nullptr;   // Kinect data source
 		IBodyFrameReference *bodyFrameReference = nullptr;
@@ -62,8 +66,10 @@ namespace Software2552 {
 		IKinectSensor* getSensor() {return pSensor;	}
 		ICoordinateMapper* getMapper() {	return pCoordinateMapper;	}
 
-		int getFrameWidth() { return 512; }
-		int getFrameHeight() { return 424; }
+		int getDepthFrameWidth() { return 512; }
+		int getDepthFrameHeight() { return 424; }
+		int getColorFrameWidth() { return 1920; }
+		int getColorFrameHeight() { return 1080; }
 
 		HRESULT depth(UINT cameraPointCount, CameraSpacePoint*csp, UINT depthPointCount, DepthSpacePoint *dsp) { return pCoordinateMapper->MapCameraPointsToDepthSpace(1, csp, 1, dsp); }
 		HRESULT color(UINT cameraPointCount, const CameraSpacePoint*csp, UINT depthPointCount, ColorSpacePoint *color) { return pCoordinateMapper->MapCameraPointsToColorSpace(1, csp, 1, color); }
@@ -199,6 +205,7 @@ namespace Software2552 {
 		void updateImage(IMultiSourceFrame* frame);
 		void updateImageIR(IMultiSourceFrame* frame);
 		bool getPoint(CameraSpacePoint& position, DepthSpacePoint& depthSpacePoint);
+		bool getPoint(CameraSpacePoint& position, ColorSpacePoint& colorSpacePoint);
 		void setHand(Json::Value &data, const TrackingConfidence& confidence, const HandState& state);
 		// audio id tracks to sound bugbug how does faces do it?
 		void setTrackingID(int index, UINT64 trackingId);

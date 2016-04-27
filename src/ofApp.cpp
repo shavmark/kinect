@@ -33,13 +33,17 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-	ofSetColor(ofColor::white);
 	if (kinect.imageir.isAllocated()) {
+		ofSetColor(ofColor::white);
 		kinect.imageir.draw(0, 0);
 	}
+	ofTranslate(ofGetWidth() / 2, 0);
 	if (kinect.imagebi.isAllocated()) {
-		kinect.imagebi.draw(ofGetWidth()/2, 0);
+		ofSetColor(ofColor::white);
+		kinect.imagebi.draw(0, 0);
 	}
+	ofTranslate(0, ofGetHeight()/2);
+	kinect.kinect.draw();
 	//faces.draw();
 	//bodies.draw();
 }

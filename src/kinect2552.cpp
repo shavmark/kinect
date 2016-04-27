@@ -6,6 +6,26 @@
 //file:///C:/Users/mark/Downloads/KinectHIG.2.0.pdf
 
 namespace Software2552 {
+	static const double faceRotationIncrementInDegrees = 5.0f;
+
+void ExtractFaceRotationInDegrees(const ofVec4f& pQuaternion, int& pitch, int& yaw, int&roll)	{
+	double x = pQuaternion.x;
+	double y = pQuaternion.y;
+	double z = pQuaternion.z;
+	double w = pQuaternion.w;
+
+	// convert face rotation quaternion to Euler angles in degrees		
+	double dPitch, dYaw, dRoll;
+	dPitch = atan2(2 * (y * z + w * x), w * w - x * x - y * y + z * z) / M_PI * 180.0;
+	dYaw = asin(2 * (w * y - x * z)) / M_PI * 180.0;
+	dRoll = atan2(2 * (x * y + w * z), w * w + x * x - y * y - z * z) / M_PI * 180.0;
+
+	// clamp rotation values in degrees to a specified range of values to control the refresh rate
+	double increment = faceRotationIncrementInDegrees;
+	pitch = static_cast<int>(floor((dPitch + increment / 2.0 * (dPitch > 0 ? 1.0 : -1.0)) / increment) * increment);
+	yaw = static_cast<int>(floor((dYaw + increment / 2.0 * (dYaw > 0 ? 1.0 : -1.0)) / increment) * increment);
+	roll = static_cast<int>(floor((dRoll + increment / 2.0 * (dRoll > 0 ? 1.0 : -1.0)) / increment) * increment);
+}
 IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		IBodyFrame* bodyframe=nullptr;
 		if (frame) {
@@ -158,11 +178,15 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		}
 
 		SafeRelease(ir);
-
+			
 	}
 	bool KinectBody::getPoint(CameraSpacePoint& position, DepthSpacePoint& depthSpacePoint) {
 		HRESULT hResult = getKinect()->depth(1, &position, 1, &depthSpacePoint);
 		return !hresultFails(hResult, "depth");
+	}
+	bool KinectBody::getPoint(CameraSpacePoint& position, ColorSpacePoint& colorSpacePoint) {
+		HRESULT hResult = getKinect()->color(1, &position, 1, &colorSpacePoint);
+		return !hresultFails(hResult, "color");
 	}
 	void KinectBody::setHand(Json::Value &data, const TrackingConfidence& confidence, const HandState& state) {
 
@@ -246,15 +270,16 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 							data["body"]["joint"][i]["trackingState"] = joints[i].TrackingState;
 							if (joints[i].TrackingState != TrackingState::TrackingState_NotTracked) {
 								// double check numbers
-								DepthSpacePoint depthSpacePoint;
-								getPoint(joints[i].Position, depthSpacePoint);
-								if ((depthSpacePoint.X >= 0) && (depthSpacePoint.X < getKinect()->getFrameWidth()) && (depthSpacePoint.Y >= 0) && (depthSpacePoint.Y < getKinect()->getFrameHeight())) {
+								ColorSpacePoint colorSpacePoint = { 0 };
+								getPoint(joints[i].Position, colorSpacePoint);
+								if ((colorSpacePoint.X >= 0) && (colorSpacePoint.X < getKinect()->getColorFrameWidth()) 
+									&& (colorSpacePoint.Y >= 0) && (colorSpacePoint.Y < getKinect()->getColorFrameHeight())) {
 									TrackingConfidence confidence;
 									HandState state;
 									data["body"]["joint"][i]["jointType"] = joints[i].JointType;
-									data["body"]["joint"][i]["depth"]["x"] = depthSpacePoint.X; // in x,y per kinect device size
-									data["body"]["joint"][i]["depth"]["y"] = depthSpacePoint.Y;
-									data["body"]["joint"][i]["cam"]["x"] = joints[i].Position.X; // in meters
+									data["body"]["joint"][i]["color"]["x"] = colorSpacePoint.X; // in x,y per kinect device size
+									data["body"]["joint"][i]["color"]["y"] = colorSpacePoint.Y;
+									data["body"]["joint"][i]["cam"]["x"] = joints[i].Position.X; // in meters, things like getting closer
 									data["body"]["joint"][i]["cam"]["y"] = joints[i].Position.Y;
 									data["body"]["joint"][i]["cam"]["z"] = joints[i].Position.Z;
 
@@ -341,10 +366,10 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		router = p;
 		if (router) {
 			ofxJSONElement data;
-			data["width"]["color"] = 1920;
-			data["width"]["depth"] = 512;
-			data["height"]["color"] = 1080;
-			data["height"]["depth"] = 424;
+			data["width"]["color"] = getColorFrameWidth();
+			data["width"]["depth"] = getDepthFrameWidth();
+			data["height"]["color"] = getColorFrameHeight();
+			data["height"]["depth"] = getDepthFrameHeight();
 			data["kinectID"] = kinectID;
 			router->comms.update(data, "kinect/install");
 		}
@@ -363,10 +388,10 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		// enable local draw also
 		switch (port) {
 		case TCPKinectIR:
-			IRFromTCP(bytes, numBytes, imageir);
+			IRFromTCP((const UINT16 *)bytes, imageir);
 			break;
 		case TCPKinectBody:
-			bodyFromTCP(bytes, numBytes); //bugbug pass in json
+			bodyFromTCP(bytes, numBytes, kinect); //bugbug pass in json
 			break;
 		case TCPKinectBodyIndex:
 			bodyIndexFromTCP(bytes, numBytes, imagebi);
@@ -435,40 +460,46 @@ void KinectFaces::update(Json::Value &data, UINT64 trackingId)
 					if (id != trackingId) {
 						return; // not sure abou this yet
 					}
-					//bugbug not show how this loops works with the face loop for > 1 person
-					data["face"]["trackingId"] = trackingId;
-					data["face"]["kinectID"] = getKinect()->getId();
 					// check for real data first
 					Vector4 faceRotation;
 					pFaceResult->get_FaceRotationQuaternion(&faceRotation);
 					if (!faceRotation.x && !faceRotation.y && !faceRotation.w && !faceRotation.z) {
 						return;// noise
 					}
+					data["face"]["trackingId"] = trackingId;
+					data["face"]["kinectID"] = getKinect()->getId();
+
+					ofVec4f quaternion;
+					int pitch=0, yaw = 0, roll = 0;
+					ExtractFaceRotationInDegrees(quaternion, pitch, yaw, roll);
+					data["face"]["rotation"]["pitch"] = pitch;
+					data["face"]["rotation"]["yaw"] = yaw;
+					data["face"]["rotation"]["roll"] = roll;
+
+					//bugbug not show how this loops works with the face loop for > 1 person
 
 					PointF facePoint[FacePointType::FacePointType_Count];
-					PointF facePointIR[FacePointType::FacePointType_Count];
 					DetectionResult faceProperty[FaceProperty::FaceProperty_Count];
 					RectI boundingBox;
-
 					hResult = pFaceResult->GetFacePointsInColorSpace(FacePointType::FacePointType_Count, facePoint);
 					if (hresultFails(hResult, "GetFacePointsInColorSpace")) {
 						return;
 					}
+
 					data["face"]["eye"]["left"]["x"] = facePoint[FacePointType_EyeLeft].X;
 					data["face"]["eye"]["left"]["y"] = facePoint[FacePointType_EyeLeft].Y;
+
 					data["face"]["eye"]["right"]["x"] = facePoint[FacePointType_EyeRight].X;
 					data["face"]["eye"]["right"]["y"] = facePoint[FacePointType_EyeRight].Y;
+
 					data["face"]["nose"]["x"] = facePoint[FacePointType_Nose].X;
 					data["face"]["nose"]["y"] = facePoint[FacePointType_Nose].Y;
+
 					data["face"]["mouth"]["left"]["x"] = facePoint[FacePointType_MouthCornerLeft].X;
 					data["face"]["mouth"]["left"]["y"] = facePoint[FacePointType_MouthCornerLeft].Y;
+
 					data["face"]["mouth"]["right"]["x"] = facePoint[FacePointType_MouthCornerRight].X;
 					data["face"]["mouth"]["right"]["y"] = facePoint[FacePointType_MouthCornerRight].Y;
-
-					data["face"]["faceRotation"]["w"] = faceRotation.w;
-					data["face"]["faceRotation"]["x"] = faceRotation.x;
-					data["face"]["faceRotation"]["y"] = faceRotation.y;
-					data["face"]["faceRotation"]["z"] = faceRotation.z;
 
 					hResult = pFaceResult->GetFaceProperties(FaceProperty::FaceProperty_Count, faceProperty);
 					if (hresultFails(hResult, "GetFaceProperties")) {
