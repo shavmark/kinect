@@ -141,7 +141,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		unsigned char* buffer = nullptr;//bugbug where does this get deleted? when we free bodyindex?
 		HRESULT hResult = bodyindex->AccessUnderlyingBuffer(&bufferSize, &buffer);
 		if (SUCCEEDED(hResult)) {
-			getKinect()->sendTCP((const char*)buffer, bufferSize, BODYINDEX);
+			getKinect()->sendKinectData((const char*)buffer, bufferSize, TCPKinectBodyIndex);
 		}
 		SafeRelease(bodyindex);
 	}
@@ -154,7 +154,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		UINT16 * buffer = nullptr;
 		HRESULT hResult = ir->AccessUnderlyingBuffer(&bufferSize, &buffer);
 		if (SUCCEEDED(hResult)) {
-			getKinect()->sendTCP((const char*)buffer, bufferSize, IR);
+			getKinect()->sendKinectData((const char*)buffer, bufferSize, TCPKinectIR);
 		}
 
 		SafeRelease(ir);
@@ -277,7 +277,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 							}
 						}
 						string s = data.getRawString(false); // too large for UDP
-						getKinect()->sendTCP((const char*)s.c_str(), s.size(), BODY);
+						getKinect()->sendKinectData((const char*)s.c_str(), s.size(), TCPKinectBody);
 					}
 				}
 			}
@@ -348,20 +348,33 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 			data["kinectID"] = kinectID;
 			router->comms.update(data, "kinect/install");
 		}
-
 		ofLogNotice("Kinect") << "Kinect signed on, life is good";
 
 		return true;
 	}
 	// send fast as Kinect is waiting
-	void  Kinect2552::sendTCP(const char * bytes, const int numBytes, char type, int clientID) {
+	void  Kinect2552::sendKinectData(const char * bytes, const int numBytes, OurPorts port, int clientID) {
 		if (router && numBytes > 0) {
 			if (numBytes < 1000) {
 				ofLogError() << "data size kindof small, maybe use udp " << " " << ofToString(numBytes);
 			}
-			router->send(bytes, numBytes, type, clientID);
-
+			router->send(bytes, numBytes, port, clientID);
 		}
+		// enable local draw also
+		switch (port) {
+		case TCPKinectIR:
+			IRFromTCP(bytes, numBytes, imageir);
+			break;
+		case TCPKinectBody:
+			bodyFromTCP(bytes, numBytes); //bugbug pass in json
+			break;
+		case TCPKinectBodyIndex:
+			bodyIndexFromTCP(bytes, numBytes, imagebi);
+			break;
+		default:
+			break;
+		}
+
 	}
 	// send Json over UDP
 	void  Kinect2552::sendUDP(ofxJSON &data, const string& address) {

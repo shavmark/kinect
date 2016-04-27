@@ -53,7 +53,8 @@ namespace Software2552 {
 		~Kinect2552();
 
 		bool setup(shared_ptr<Router>p=nullptr);
-
+		ofImage imagebi;
+		ofImage imageir;
 		IMultiSourceFrame* frame = nullptr;
 		IMultiSourceFrameReader* reader = nullptr;   // Kinect data source
 		IBodyFrameReference *bodyFrameReference = nullptr;
@@ -69,7 +70,7 @@ namespace Software2552 {
 
 		const string &getId() { return kinectID; }
 		// send large binary data over TCP (over 1000 byte)
-		void sendTCP(const char * bytes, const int numBytes, char type, int clientID = -1);
+		void sendKinectData(const char * bytes, const int numBytes, OurPorts port, int clientID = -1);
 		// send Json over UDP, fast, small
 		void sendUDP(ofxJSON &data, const string& address);
 

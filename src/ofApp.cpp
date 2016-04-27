@@ -34,11 +34,11 @@ void ofApp::update(){
 //--------------------------------------------------------------
 void ofApp::draw(){
 	ofSetColor(ofColor::white);
-	if (imageir.isAllocated()) {
-		//imageir.draw(0, 0);
+	if (kinect.imageir.isAllocated()) {
+		kinect.imageir.draw(0, 0);
 	}
-	if (image.isAllocated()) {
-		//image.draw(ofGetWidth()/2, 0);
+	if (kinect.imagebi.isAllocated()) {
+		kinect.imagebi.draw(ofGetWidth()/2, 0);
 	}
 	//faces.draw();
 	//bodies.draw();
