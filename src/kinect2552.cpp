@@ -8,7 +8,7 @@
 namespace Software2552 {
 	static const double faceRotationIncrementInDegrees = 5.0f;
 	
-void ExtractFaceRotationInDegrees(const ofVec4f& pQuaternion, int& pitch, int& yaw, int&roll)	{
+void ExtractFaceRotationInDegrees(const Vector4& pQuaternion, int& pitch, int& yaw, int&roll)	{
 	double x = pQuaternion.x;
 	double y = pQuaternion.y;
 	double z = pQuaternion.z;
@@ -460,36 +460,38 @@ void KinectFaces::setTrackingID(int index, UINT64 trackingId) {
 // 
 void KinectFaces::update(Json::Value &data, UINT64 trackingId)
 {
+	IFaceFrame* pFaceFrame = nullptr;
+	IFaceFrameResult* pFaceResult = nullptr;
+	data.clear();
 	for (int count = 0; count < BODY_COUNT; count++) {
-		IFaceFrame* pFaceFrame = nullptr;
+
 		HRESULT hResult = faces[count]->getFaceReader()->AcquireLatestFrame(&pFaceFrame); // faces[count].getFaceReader() was pFaceReader[count]
 		if (SUCCEEDED(hResult) && pFaceFrame != nullptr) {
 			BOOLEAN bFaceTracked = false;
 			hResult = pFaceFrame->get_IsTrackingIdValid(&bFaceTracked);
 			if (SUCCEEDED(hResult) && bFaceTracked) {
-				IFaceFrameResult* pFaceResult = nullptr;
 				hResult = pFaceFrame->get_FaceFrameResult(&pFaceResult);
 				if (SUCCEEDED(hResult) && pFaceResult != nullptr) {
 					UINT64 id;
 					pFaceFrame->get_TrackingId(&id);
 					if (id != trackingId) {
-						return; // not sure abou this yet
+						break; // not sure abou this yet
 					}
 					// check for real data first
 					Vector4 faceRotation;
 					pFaceResult->get_FaceRotationQuaternion(&faceRotation);
 					if (!faceRotation.x && !faceRotation.y && !faceRotation.w && !faceRotation.z) {
-						return;// noise
+						break;// noise
 					}
-					data["face"]["trackingId"] = trackingId;
-					data["face"]["kinectID"] = getKinect()->getId();
-
-					ofVec4f quaternion;
 					int pitch=0, yaw = 0, roll = 0;
-					ExtractFaceRotationInDegrees(quaternion, pitch, yaw, roll);
+					ExtractFaceRotationInDegrees(faceRotation, pitch, yaw, roll);
 					data["face"]["rotation"]["pitch"] = pitch;
 					data["face"]["rotation"]["yaw"] = yaw;
 					data["face"]["rotation"]["roll"] = roll;
+
+					data["face"]["trackingId"] = trackingId;
+					data["face"]["kinectID"] = getKinect()->getId();
+
 
 					//bugbug not show how this loops works with the face loop for > 1 person
 
@@ -498,10 +500,24 @@ void KinectFaces::update(Json::Value &data, UINT64 trackingId)
 					RectI boundingBox;
 					hResult = pFaceResult->GetFacePointsInColorSpace(FacePointType::FacePointType_Count, facePoint);
 					if (hresultFails(hResult, "GetFacePointsInColorSpace")) {
-						return;
+						break;
 					}
+					pFaceResult->get_FaceBoundingBoxInColorSpace(&boundingBox);
+					data["face"]["boundingBox"]["top"] = boundingBox.Top;
+					data["face"]["boundingBox"]["left"] = boundingBox.Left;
+					data["face"]["boundingBox"]["right"] = boundingBox.Right;
+					data["face"]["boundingBox"]["bottom"] = boundingBox.Bottom;
 
-					data["face"]["eye"]["left"]["x"] = round(facePoint[FacePointType_EyeLeft].X);
+					hResult = pFaceResult->GetFaceProperties(FaceProperty::FaceProperty_Count, faceProperty);
+					if (hresultFails(hResult, "GetFaceProperties")) {
+						break;
+					}
+					if (!facePoint[FacePointType_EyeLeft].X && !facePoint[FacePointType_EyeRight].X && !facePoint[FacePointType_Nose].X && !facePoint[FacePointType_MouthCornerLeft].X) {
+						// spurious
+						break;
+					}
+					float f;
+					data["face"]["eye"]["left"]["x"] = f = round(facePoint[FacePointType_EyeLeft].X);
 					data["face"]["eye"]["left"]["y"] = round(facePoint[FacePointType_EyeLeft].Y);
 
 					data["face"]["eye"]["right"]["x"] = round(facePoint[FacePointType_EyeRight].X);
@@ -516,10 +532,6 @@ void KinectFaces::update(Json::Value &data, UINT64 trackingId)
 					data["face"]["mouth"]["right"]["x"] = round(facePoint[FacePointType_MouthCornerRight].X);
 					data["face"]["mouth"]["right"]["y"] = round(facePoint[FacePointType_MouthCornerRight].Y);
 
-					hResult = pFaceResult->GetFaceProperties(FaceProperty::FaceProperty_Count, faceProperty);
-					if (hresultFails(hResult, "GetFaceProperties")) {
-						return;
-					}
 #define YES_OR_MAYBE(a)(faceProperty[a] == DetectionResult_Yes || faceProperty[a] == DetectionResult_Maybe)
 #define NOT_YES(a)(faceProperty[FaceProperty_RightEyeClosed] != DetectionResult_Yes)
 					data["face"]["eye"]["right"]["closed"] = NOT_YES(FaceProperty_RightEyeClosed);
@@ -531,23 +543,14 @@ void KinectFaces::update(Json::Value &data, UINT64 trackingId)
 					data["face"]["lookingAway"] = YES_OR_MAYBE(FaceFrameFeatures_LookingAway);
 					data["face"]["glasses"] = YES_OR_MAYBE(FaceFrameFeatures_Glasses);
 					data["face"]["engaged"] = YES_OR_MAYBE(FaceFrameFeatures_FaceEngagement);
-					//bugbug if these are relative to current screen convert them to percents of screen (ie x/size kind of thing)
-					pFaceResult->get_FaceBoundingBoxInColorSpace(&boundingBox);
-					data["face"]["boundingBox"]["top"] = boundingBox.Top;
-					data["face"]["boundingBox"]["left"] = boundingBox.Left;
-					data["face"]["boundingBox"]["right"] = boundingBox.Right;
-					data["face"]["boundingBox"]["bottom"] = boundingBox.Bottom;
-
-					SafeRelease(pFaceResult);
-					SafeRelease(pFaceFrame);
-					return;
+					break;
 
 				}
-				SafeRelease(pFaceResult);
 			}
 		}
-		SafeRelease(pFaceFrame);
 	}
+	SafeRelease(pFaceResult);
+	SafeRelease(pFaceFrame);
 }
 void KinectFaces::buildFaces() {
 	for (int i = 0; i < BODY_COUNT; ++i) {
