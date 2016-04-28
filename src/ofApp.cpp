@@ -33,17 +33,17 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
+	ofTranslate(0, 0); // kinect draws top left 
+	kinect.kinect.draw();
+
 	if (kinect.imageir.isAllocated()) {
 		ofSetColor(ofColor::white);
-		kinect.imageir.draw(0, 0);
+		kinect.imageir.draw(0, kinectHeightForDepth);
 	}
-	ofTranslate(ofGetWidth() / 2, 0);
 	if (kinect.imagebi.isAllocated()) {
 		ofSetColor(ofColor::white);
-		kinect.imagebi.draw(0, 0);
+		kinect.imagebi.draw(0, kinectHeightForDepth+ kinectHeightForIR);
 	}
-	ofTranslate(0, ofGetHeight()/2);
-	kinect.kinect.draw();
 	//faces.draw();
 	//bodies.draw();
 }

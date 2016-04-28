@@ -23,6 +23,7 @@
 
 #include "ofxJSON.h"
 #include "networking.h"
+#include "control.h"
 #include "kinect2552.h"
 
 class ofApp : public ofBaseApp{

@@ -7,7 +7,7 @@
 
 namespace Software2552 {
 	static const double faceRotationIncrementInDegrees = 5.0f;
-
+	
 void ExtractFaceRotationInDegrees(const ofVec4f& pQuaternion, int& pitch, int& yaw, int&roll)	{
 	double x = pQuaternion.x;
 	double y = pQuaternion.y;
@@ -157,11 +157,22 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		if (!bodyindex) {
 			return;
 		}
+
 		unsigned int bufferSize = 0;
 		unsigned char* buffer = nullptr;//bugbug where does this get deleted? when we free bodyindex?
 		HRESULT hResult = bodyindex->AccessUnderlyingBuffer(&bufferSize, &buffer);
 		if (SUCCEEDED(hResult)) {
-			getKinect()->sendKinectData((const char*)buffer, bufferSize, TCPKinectBodyIndex);
+			// only send if real data is present
+			bool found = false;
+			for (int i = 0; i < bufferSize; ++i) {
+				if (buffer[i] != 0xff) {
+					found = true;//bugbug lots of scans but I am not sure how to find if something is not in a buffer w/o a scan
+					break;
+				}
+			}
+			if (found) {
+				getKinect()->sendKinectData((const char*)buffer, bufferSize, TCPKinectBodyIndex);
+			}
 		}
 		SafeRelease(bodyindex);
 	}
@@ -269,14 +280,17 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 						for (int i = 0; i < JointType::JointType_Count; ++i) {
 							data["body"]["joint"][i]["trackingState"] = joints[i].TrackingState;
 							if (joints[i].TrackingState != TrackingState::TrackingState_NotTracked) {
-								// double check numbers
 								ColorSpacePoint colorSpacePoint = { 0 };
+								DepthSpacePoint depthSpacePoint = { 0 };
 								getPoint(joints[i].Position, colorSpacePoint);
-								if ((colorSpacePoint.X >= 0) && (colorSpacePoint.X < getKinect()->getColorFrameWidth()) 
+								getPoint(joints[i].Position, depthSpacePoint);
+								if ((colorSpacePoint.X >= 0) && (colorSpacePoint.X < getKinect()->getColorFrameWidth())
 									&& (colorSpacePoint.Y >= 0) && (colorSpacePoint.Y < getKinect()->getColorFrameHeight())) {
 									TrackingConfidence confidence;
 									HandState state;
 									data["body"]["joint"][i]["jointType"] = joints[i].JointType;
+									data["body"]["joint"][i]["depth"]["x"] = depthSpacePoint.X; // in x,y per kinect device size
+									data["body"]["joint"][i]["depth"]["y"] = depthSpacePoint.Y;
 									data["body"]["joint"][i]["color"]["x"] = colorSpacePoint.X; // in x,y per kinect device size
 									data["body"]["joint"][i]["color"]["y"] = colorSpacePoint.Y;
 									data["body"]["joint"][i]["cam"]["x"] = joints[i].Position.X; // in meters, things like getting closer

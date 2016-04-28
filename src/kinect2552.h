@@ -1,6 +1,5 @@
 
 #include <inc\Kinect.Face.h>
-#include "control.h"
 
 //https://github.com/Vangos, http://www.cs.princeton.edu/~edwardz/tutorials/kinect2/kinect0_sdl.html, https://github.com/UnaNancyOwen
 //http://www.pointclouds.org/
