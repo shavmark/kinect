@@ -33,19 +33,22 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
+	//ofScale(ofGetWidth(), ofGetWidth());
 	ofTranslate(0, 0); // kinect draws top left 
 	kinect.kinect.draw();
+	ofTranslate(kinectWidthForDepth, 0);
+	kinect.kinect.face.draw();
 
 	if (kinect.imageir.isAllocated()) {
 		ofSetColor(ofColor::white);
-		kinect.imageir.draw(0, kinectHeightForDepth);
+		ofTranslate(0, kinectHeightForDepth); // kinect draws top left 
+		kinect.imageir.draw(0, 0);
 	}
 	if (kinect.imagebi.isAllocated()) {
 		ofSetColor(ofColor::white);
-		kinect.imagebi.draw(0, kinectHeightForDepth+ kinectHeightForIR);
+		ofTranslate(kinectHeightForDepth, kinectHeightForDepth); // kinect draws top left 
+		kinect.imagebi.draw(0, 0);
 	}
-	//faces.draw();
-	//bodies.draw();
 }
 
 //--------------------------------------------------------------

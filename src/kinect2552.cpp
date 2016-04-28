@@ -244,41 +244,41 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 
 				hResult = pBody[count]->get_IsTracked(&bTracked);
 				if (SUCCEEDED(hResult) && bTracked) {
-					ofxJSONElement data;
-					Joint joints[JointType::JointType_Count];
-					PointF leanAmount;
-
 					// Set TrackingID to Detect Face
 					UINT64 trackingId = _UI64_MAX;
 					hResult = pBody[count]->get_TrackingId(&trackingId);
 					if (hresultFails(hResult, "get_TrackingId")) {
 						continue;
 					}
-					data["body"]["trackingId"] = trackingId;
-					data["body"]["kinectID"] = getKinect()->getId();
+					ofxJSONElement data;
+					Joint joints[JointType::JointType_Count];
+					PointF leanAmount;
+
+					data["body"][count]["trackingId"] = trackingId;
+					data["body"][count]["kinectID"] = getKinect()->getId();
 					if (audio) {
 						// see if any audio there
 						audio->getAudioCorrelation();
 						//bugbug can we use the tracking id, and is valid id, here vs creating our own?
 						if (audio->getTrackingID() == trackingId) {
-							audio->update(data["body"], trackingId);
+							audio->update(data["body"][count], trackingId);
 						}
 					}
 					if (faces) {
 						// will fire off face data before body data
 						setTrackingID(count, trackingId);// keep face on track with body
-						faces->update(data["body"], trackingId);//bugbug need to simplfy this but see what happens for now
+						faces->update(data["body"][count], trackingId);//bugbug need to simplfy this but see what happens for now
 					}
 
 					// get joints
 					hResult = pBody[count]->GetJoints(JointType::JointType_Count, joints);
 					if (SUCCEEDED(hResult)) {
 						pBody[count]->get_Lean(&leanAmount);
-						data["body"]["lean"]["x"] = leanAmount.X;
-						data["body"]["lean"]["y"] = leanAmount.Y;
+						data["body"][count]["lean"]["x"] = leanAmount.X;
+						data["body"][count]["lean"]["y"] = leanAmount.Y;
 
 						for (int i = 0; i < JointType::JointType_Count; ++i) {
-							data["body"]["joint"][i]["trackingState"] = joints[i].TrackingState;
+							data["body"][count]["joint"][i]["trackingState"] = joints[i].TrackingState;
 							if (joints[i].TrackingState != TrackingState::TrackingState_NotTracked) {
 								ColorSpacePoint colorSpacePoint = { 0 };
 								DepthSpacePoint depthSpacePoint = { 0 };
@@ -288,25 +288,26 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 									&& (colorSpacePoint.Y >= 0) && (colorSpacePoint.Y < getKinect()->getColorFrameHeight())) {
 									TrackingConfidence confidence;
 									HandState state;
-									data["body"]["joint"][i]["jointType"] = joints[i].JointType;
-									data["body"]["joint"][i]["depth"]["x"] = depthSpacePoint.X; // in x,y per kinect device size
-									data["body"]["joint"][i]["depth"]["y"] = depthSpacePoint.Y;
-									data["body"]["joint"][i]["color"]["x"] = colorSpacePoint.X; // in x,y per kinect device size
-									data["body"]["joint"][i]["color"]["y"] = colorSpacePoint.Y;
-									data["body"]["joint"][i]["cam"]["x"] = joints[i].Position.X; // in meters, things like getting closer
-									data["body"]["joint"][i]["cam"]["y"] = joints[i].Position.Y;
-									data["body"]["joint"][i]["cam"]["z"] = joints[i].Position.Z;
+									data["body"][count]["joint"][i]["jointType"] = joints[i].JointType;
+									float t = round(depthSpacePoint.X);
+									data["body"][count]["joint"][i]["depth"]["x"] = round(depthSpacePoint.X);  // in x,y per kinect device size
+									data["body"][count]["joint"][i]["depth"]["y"] = round(depthSpacePoint.Y);
+									data["body"][count]["joint"][i]["color"]["x"] = round(colorSpacePoint.X); // in x,y per kinect device size
+									data["body"][count]["joint"][i]["color"]["y"] = round(colorSpacePoint.Y);
+									data["body"][count]["joint"][i]["cam"]["x"] = round(joints[i].Position.X); // in meters, things like getting closer
+									data["body"][count]["joint"][i]["cam"]["y"] = round(joints[i].Position.Y);
+									data["body"][count]["joint"][i]["cam"]["z"] = round(joints[i].Position.Z);
 
 									if (joints[i].JointType == JointType::JointType_HandRight) {
 										pBody[count]->get_HandRightConfidence(&confidence); // send this so we do not have to decide
 										pBody[count]->get_HandRightState(&state);
-										setHand(data["body"]["joint"][i]["right"], confidence, state);
+										setHand(data["body"][count]["joint"][i]["right"], confidence, state);
 									}
 									else if (joints[i].JointType == JointType::JointType_HandLeft) {
 										pBody[count]->get_HandLeftConfidence(&confidence); // send this so we do not have to decide
 										pBody[count]->get_HandLeftState(&state);
 										string s = data.getRawString(false);
-										setHand(data["body"]["joint"][i]["left"], confidence, state);
+										setHand(data["body"][count]["joint"][i]["left"], confidence, state);
 									}
 									else {
 										// just the joint gets drawn, its name other than JointType_Head (hand above head)
@@ -500,20 +501,20 @@ void KinectFaces::update(Json::Value &data, UINT64 trackingId)
 						return;
 					}
 
-					data["face"]["eye"]["left"]["x"] = facePoint[FacePointType_EyeLeft].X;
-					data["face"]["eye"]["left"]["y"] = facePoint[FacePointType_EyeLeft].Y;
+					data["face"]["eye"]["left"]["x"] = round(facePoint[FacePointType_EyeLeft].X);
+					data["face"]["eye"]["left"]["y"] = round(facePoint[FacePointType_EyeLeft].Y);
 
-					data["face"]["eye"]["right"]["x"] = facePoint[FacePointType_EyeRight].X;
-					data["face"]["eye"]["right"]["y"] = facePoint[FacePointType_EyeRight].Y;
+					data["face"]["eye"]["right"]["x"] = round(facePoint[FacePointType_EyeRight].X);
+					data["face"]["eye"]["right"]["y"] = round(facePoint[FacePointType_EyeRight].Y);
 
-					data["face"]["nose"]["x"] = facePoint[FacePointType_Nose].X;
-					data["face"]["nose"]["y"] = facePoint[FacePointType_Nose].Y;
+					data["face"]["nose"]["x"] = round(facePoint[FacePointType_Nose].X);
+					data["face"]["nose"]["y"] = round(facePoint[FacePointType_Nose].Y);
 
-					data["face"]["mouth"]["left"]["x"] = facePoint[FacePointType_MouthCornerLeft].X;
-					data["face"]["mouth"]["left"]["y"] = facePoint[FacePointType_MouthCornerLeft].Y;
+					data["face"]["mouth"]["left"]["x"] = round(facePoint[FacePointType_MouthCornerLeft].X);
+					data["face"]["mouth"]["left"]["y"] = round(facePoint[FacePointType_MouthCornerLeft].Y);
 
-					data["face"]["mouth"]["right"]["x"] = facePoint[FacePointType_MouthCornerRight].X;
-					data["face"]["mouth"]["right"]["y"] = facePoint[FacePointType_MouthCornerRight].Y;
+					data["face"]["mouth"]["right"]["x"] = round(facePoint[FacePointType_MouthCornerRight].X);
+					data["face"]["mouth"]["right"]["y"] = round(facePoint[FacePointType_MouthCornerRight].Y);
 
 					hResult = pFaceResult->GetFaceProperties(FaceProperty::FaceProperty_Count, faceProperty);
 					if (hresultFails(hResult, "GetFaceProperties")) {
