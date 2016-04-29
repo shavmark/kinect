@@ -274,7 +274,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 					hResult = pBody[count]->GetJoints(JointType::JointType_Count, joints);
 					if (SUCCEEDED(hResult)) {
 						pBody[count]->get_Lean(&leanAmount);
-						data["body"][count]["lean"]["x"] = leanAmount.X;
+						data["body"][count]["lean"]["x"] = leanAmount.X;//bugbug account for this in drawing code
 						data["body"][count]["lean"]["y"] = leanAmount.Y;
 
 						for (int i = 0; i < JointType::JointType_Count; ++i) {
@@ -284,8 +284,9 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 								DepthSpacePoint depthSpacePoint = { 0 };
 								getPoint(joints[i].Position, colorSpacePoint);
 								getPoint(joints[i].Position, depthSpacePoint);
+								
 								if ((colorSpacePoint.X >= 0) && (colorSpacePoint.X < getKinect()->getColorFrameWidth())
-									&& (colorSpacePoint.Y >= 0) && (colorSpacePoint.Y < getKinect()->getColorFrameHeight())) {
+									&& (depthSpacePoint.Y >= 0) && (depthSpacePoint.Y < getKinect()->getDepthFrameHeight())) {
 									TrackingConfidence confidence;
 									HandState state;
 									data["body"][count]["joint"][i]["jointType"] = joints[i].JointType;

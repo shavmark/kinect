@@ -35,12 +35,11 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-	return;
+	
 	//ofScale(ofGetWidth(), ofGetWidth());
 	ofPushMatrix();
 	ofTranslate(0, 0); // kinect draws top left 
 	kinect.kinect.draw();
-	ofTranslate(0, kinectHeightForDepth);
 	kinect.kinect.face.draw();
 	ofPopMatrix();
 	return;
