@@ -329,7 +329,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		SafeRelease(frame);
 	}
 
-	bool Kinect2552::setup(shared_ptr<Router>p) {
+	bool Kinect2552::setup(shared_ptr<Sender>p) {
 
 		HRESULT hResult = GetDefaultKinectSensor(&pSensor);
 		if (hresultFails(hResult, "GetDefaultKinectSensor")) {

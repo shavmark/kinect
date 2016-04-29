@@ -51,7 +51,7 @@ namespace Software2552 {
 	public:
 		~Kinect2552();
 
-		bool setup(shared_ptr<Router>p=nullptr);
+		bool setup(shared_ptr<Sender>p=nullptr);
 
 		// ready to draw
 		ofImage imagebi;
@@ -80,7 +80,7 @@ namespace Software2552 {
 		void sendUDP(ofxJSON &data, const string& address);
 
 	private:
-		shared_ptr<Router> router = nullptr; // optional
+		shared_ptr<Sender> router = nullptr; // optional
 		string kinectID;
 		IKinectSensor*     pSensor = nullptr;
 		ICoordinateMapper* pCoordinateMapper = nullptr;

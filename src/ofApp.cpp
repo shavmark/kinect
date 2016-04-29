@@ -2,8 +2,9 @@
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-
-	shared_ptr<Software2552::Router>router = std::make_shared<Software2552::Router>();
+	//reader.setup();
+	//return;
+	shared_ptr<Software2552::Sender>router = std::make_shared<Software2552::Sender>();
 	if (!router) {
 		return; //things would be really messed up...
 	}
@@ -26,6 +27,7 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update(){
+	//return;
 	if (bodies) {
 		bodies->update();
 	}
@@ -33,27 +35,28 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
+	return;
 	//ofScale(ofGetWidth(), ofGetWidth());
+	ofPushMatrix();
 	ofTranslate(0, 0); // kinect draws top left 
 	kinect.kinect.draw();
-	ofPushMatrix();
 	ofTranslate(0, kinectHeightForDepth);
 	kinect.kinect.face.draw();
 	ofPopMatrix();
-
+	return;
 	if (kinect.imageir.isAllocated()) {
 		ofSetColor(ofColor::white);
 		ofPushMatrix();
-		ofTranslate(0, 0); // kinect draws top left 
 		ofScale(0.5f, 0.5f);
+		ofTranslate(0, 0); // kinect draws top left 
 		kinect.imageir.draw(0, 0);
 		ofPopMatrix();
 	}
 	if (kinect.imagebi.isAllocated()) {
 		ofSetColor(ofColor::white);
 		ofPushMatrix();
-		ofTranslate(kinectWidthForDepth, 0); // kinect draws top left 
 		ofScale(0.5f, 0.5f);
+		ofTranslate(kinectWidthForDepth, 0); // kinect draws top left 
 		kinect.imagebi.draw(0, 0);
 		ofPopMatrix();
 	}
