@@ -48,7 +48,7 @@ class ofApp : public ofBaseApp{
 		Software2552::Kinect2552 kinect;
 		Software2552::WriteOsc comms;
 	
-		//Software2552::TCPReader reader;
+		Software2552::TCPReader reader;
 
 		shared_ptr<Software2552::KinectBody> bodies=nullptr;
 		shared_ptr<Software2552::KinectFaces> faces = nullptr;
