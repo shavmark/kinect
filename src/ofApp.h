@@ -46,7 +46,6 @@ class ofApp : public ofBaseApp{
 		void gotMessage(ofMessage msg);
 
 		Software2552::Kinect2552 kinect;
-		Software2552::WriteOsc comms;
 	
 		Software2552::TCPReader reader;
 
