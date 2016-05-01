@@ -246,14 +246,16 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		if (hresultFails(hResult, "AcquireLatestFrame")) {
 			return;
 		}
+		c++;
+
 		// IR optional, only sent if client asks for it, not shown locally
-		if (getKinect()->getIR()) {
+		if (getKinect()->getIR() && (c % getKinect()->irThrottle)) {
 			updateImageIR(frame);
 		}
-		if (getKinect()->getBodyIndex()) {
+		if (getKinect()->getBodyIndex() && (c % getKinect()->biThrottle)) {
 			updateImageBodyIndex(frame);
 		}
-		if (!getKinect()->getBody()) {
+		if (!getKinect()->getBody() && (c % getKinect()->bodyThrottle)) {
 			SafeRelease(frame);
 			return;
 		}

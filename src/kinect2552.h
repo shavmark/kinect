@@ -53,7 +53,7 @@ namespace Software2552 {
 
 		bool setup(shared_ptr<Sender>p=nullptr);
 
-		// ready to draw
+		// ready to draw if requested
 		ofImage imagebi;
 		ofImage imageir;
 		Kinect kinect; 
@@ -85,7 +85,9 @@ namespace Software2552 {
 		void setBodyIndex(bool b) { bi = b; }
 		bool getBody();
 		void setBody(bool b) { body = b; }
-
+		int irThrottle = 20; // send every 20th after the first
+		int biThrottle = 2;
+		int bodyThrottle = 1; 
 	private:
 		bool ir = false; // get ir
 		bool bi = false; // get body index
@@ -211,6 +213,7 @@ namespace Software2552 {
 		void useAudio(shared_ptr<KinectAudio> audioIn) { audio = audioIn; }
 
 	private:
+		int c = 0; // times called count
 		void updateImageBodyIndex(IMultiSourceFrame* frame);
 		void updateImageIR(IMultiSourceFrame* frame);
 		bool getPoint(CameraSpacePoint& position, DepthSpacePoint& depthSpacePoint);
