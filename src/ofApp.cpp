@@ -2,8 +2,6 @@
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-	reader.setup();
-	return;
 	shared_ptr<Software2552::Sender>router = std::make_shared<Software2552::Sender>();
 	if (!router) {
 		return; //things would be really messed up...
@@ -27,7 +25,6 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update(){
-	return;
 	if (bodies) {
 		bodies->update();
 	}

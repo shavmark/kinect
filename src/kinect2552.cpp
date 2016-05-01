@@ -374,10 +374,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		// keep color separate https://social.msdn.microsoft.com/Forums/en-US/4672ca22-4ff2-445b-8574-3011ef16a44c/long-exposure-infrared-vs-infrared?forum=kinectv2sdk
 		//http://blog.csdn.net/guoming0000/article/details/46392909
 		hResult = pSensor->OpenMultiSourceFrameReader(
-			 FrameSourceTypes::FrameSourceTypes_Body|
-			 FrameSourceTypes_BodyIndex | FrameSourceTypes_Infrared
-			,
-			&reader);
+			 FrameSourceTypes::FrameSourceTypes_Body|	 FrameSourceTypes_BodyIndex | FrameSourceTypes_Infrared,	&reader);
 		if (hresultFails(hResult, "OpenMultiSourceFrameReader")) {
 			return false;
 		}
