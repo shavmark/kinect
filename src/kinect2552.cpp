@@ -415,7 +415,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 			data["height"]["color"] = getColorFrameHeight();
 			data["height"]["depth"] = getDepthFrameHeight();
 			data["kinectID"] = kinectID;
-			router->comms.update(data, "kinect/install");
+			router->sendOsc(data, "kinect/install");
 		}
 		ofLogNotice("Kinect") << "Kinect signed on, life is good";
 
@@ -427,7 +427,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 			if (numBytes < 1000) {
 				ofLogError() << "data size kindof small, maybe use udp " << " " << ofToString(numBytes);
 			}
-			router->send(bytes, numBytes, port, clientID);
+			router->sendTCP(bytes, numBytes, port, clientID);
 		}
 		// enable local draw also
 		switch (port) {
@@ -458,7 +458,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 			if (data.size() > 1000) {
 				ofLogError() << "data size kindof large, maybe use TCP " << address << " " << ofToString(data.size());
 			}
-			router->comms.update(data, address);
+			router->sendOsc(data, address);
 		}
 	}
 

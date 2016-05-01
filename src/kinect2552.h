@@ -53,11 +53,6 @@ namespace Software2552 {
 
 		bool setup(shared_ptr<Sender>p=nullptr);
 
-		// ready to draw if requested
-		ofImage imagebi;
-		ofImage imageir;
-		Kinect kinect; 
-
 		IMultiSourceFrame* frame = nullptr;
 		IMultiSourceFrameReader* reader = nullptr;   // Kinect data source
 		IBodyFrameReference *bodyFrameReference = nullptr;

@@ -46,8 +46,7 @@ class ofApp : public ofBaseApp{
 		void gotMessage(ofMessage msg);
 
 		Software2552::Kinect2552 kinect;
-	
-		Software2552::TCPReader reader;
+		// ready to draw if requested
 
 		shared_ptr<Software2552::KinectBody> bodies=nullptr;
 		shared_ptr<Software2552::KinectFaces> faces = nullptr;
