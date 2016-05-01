@@ -433,13 +433,20 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		// enable local draw also
 		switch (port) {
 		case TCPKinectIR:
-			IRFromTCP((const UINT16 *)bytes, imageir);
+			if (ir) {
+				// likely too much for a small pc
+				IRFromTCP((const UINT16 *)bytes, imageir);
+			}
 			break;
 		case TCPKinectBody:
-			bodyFromTCP(bytes, numBytes, kinect); //bugbug pass in json
+			if (body) {
+				bodyFromTCP(bytes, numBytes, kinect); //bugbug pass in json
+			}
 			break;
 		case TCPKinectBodyIndex:
-			bodyIndexFromTCP(bytes, numBytes, imagebi);
+			if (bi) {
+				bodyIndexFromTCP(bytes, numBytes, imagebi);
+			}
 			break;
 		default:
 			break;
