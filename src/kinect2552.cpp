@@ -107,6 +107,25 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		SafeRelease(pSensor);
 		SafeRelease(pCoordinateMapper);
 	}
+	bool Kinect2552::getIR() {
+		if (router && router->kinectIREnabled()) {
+			return true;
+		}
+		return ir;
+	}
+	bool Kinect2552::getBodyIndex() {
+		if (router && router->KinectBodyIndexEndabled()) {
+			return true;
+		}
+		return ir;
+	}
+	bool Kinect2552::getBody() {
+		if (router && router->KinectBodyEnabled()) {
+			return true;
+		}
+		return ir;
+	}
+
 	//const const int colorwidth = 1920;
 	//const const int colorheight = 1080;
 	//bugbug send these phase II
@@ -152,7 +171,7 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		}
 
 	}
-	void KinectBody::updateImage(IMultiSourceFrame* frame) {
+	void KinectBody::updateImageBodyIndex(IMultiSourceFrame* frame) {
 		IBodyIndexFrame * bodyindex = getBodyIndex(frame);
 		if (!bodyindex) {
 			return;
@@ -227,13 +246,23 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		if (hresultFails(hResult, "AcquireLatestFrame")) {
 			return;
 		}
+		// IR optional, only sent if client asks for it, not shown locally
+		if (getKinect()->getIR()) {
+			updateImageIR(frame);
+		}
+		if (getKinect()->getBodyIndex()) {
+			updateImageBodyIndex(frame);
+		}
+		if (!getKinect()->getBody()) {
+			SafeRelease(frame);
+			return;
+		}
+
 		IBodyFrame* bodyframe = getBody(frame);
 		if (!bodyframe) {
 			SafeRelease(frame);
 			return;
 		}
-		updateImage(frame);
-		updateImageIR(frame);
 		IBody* pBody[BODY_COUNT] = { 0 };
 
 		hResult = bodyframe->GetAndRefreshBodyData(BODY_COUNT, pBody);

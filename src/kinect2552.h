@@ -78,8 +78,18 @@ namespace Software2552 {
 		void sendKinectData(const char * bytes, const int numBytes, OurPorts port, int clientID = -1);
 		// send Json over UDP, fast, small
 		void sendUDP(ofxJSON &data, const string& address);
+		shared_ptr<Sender> sender() { return router; }
+		bool getIR();
+		void setIR(bool b) { ir = b; }
+		bool getBodyIndex();
+		void setBodyIndex(bool b) { bi = b; }
+		bool getBody();
+		void setBody(bool b) { body = b; }
 
 	private:
+		bool ir = false; // get ir
+		bool bi = false; // get body index
+		bool body = true; // get body
 		shared_ptr<Sender> router = nullptr; // optional
 		string kinectID;
 		IKinectSensor*     pSensor = nullptr;
@@ -201,7 +211,7 @@ namespace Software2552 {
 		void useAudio(shared_ptr<KinectAudio> audioIn) { audio = audioIn; }
 
 	private:
-		void updateImage(IMultiSourceFrame* frame);
+		void updateImageBodyIndex(IMultiSourceFrame* frame);
 		void updateImageIR(IMultiSourceFrame* frame);
 		bool getPoint(CameraSpacePoint& position, DepthSpacePoint& depthSpacePoint);
 		bool getPoint(CameraSpacePoint& position, ColorSpacePoint& colorSpacePoint);
