@@ -108,19 +108,19 @@ IBodyFrame* getBody(IMultiSourceFrame* frame) {
 		SafeRelease(pCoordinateMapper);
 	}
 	bool Kinect2552::getIR() {
-		if (router && router->kinectIREnabled()) {
+		if (ir || (router && router->kinectIREnabled())) {
 			return true;
 		}
 		return ir;
 	}
 	bool Kinect2552::getBodyIndex() {
-		if (router && router->KinectBodyIndexEndabled()) {
+		if (bi || (router && router->KinectBodyIndexEndabled())) {
 			return true;
 		}
 		return ir;
 	}
 	bool Kinect2552::getBody() {
-		if (router && router->KinectBodyEnabled()) {
+		if (body || (router && router->KinectBodyEnabled())) {
 			return true;
 		}
 		return ir;
